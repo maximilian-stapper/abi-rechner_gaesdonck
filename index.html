@@ -10,13 +10,14 @@
     <meta name="theme-color" content="#18181b" />
     <title>Abi-Rechner Gaesdonck</title>
     <link rel="stylesheet" href="style.css" />
-
     <meta name="apple-mobile-web-app-title" content="Abi-Rechner" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="apple-touch-icon.png" />
 
     <style>
       .loader {
+        --time: 2s;
+
         position: fixed;
         inset: 0;
         z-index: 9999;
@@ -24,8 +25,8 @@
         place-items: center;
         background: var(--bg, #161618);
         transition:
-          opacity 0.2s ease,
-          visibility 0.2s;
+          opacity 0.25s ease,
+          visibility 0.25s;
       }
       .loader.is-hidden {
         opacity: 0;
@@ -41,36 +42,33 @@
       .loader__logo .part {
         transform-box: fill-box;
         animation-fill-mode: both;
-        animation-duration: 0.26s;
         animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
       }
-      /* Querbalken wächst aus der Mitte */
       .loader__logo .bar {
         transform-origin: 50% 50%;
         animation-name: bar-in;
-        animation-duration: 0.24s;
+        animation-duration: calc(var(--time) * 0.35);
       }
-      /* Stamm wächst von oben nach unten */
       .loader__logo .stem {
         transform-origin: 50% 0;
         animation-name: stem-in;
-        animation-delay: 0.05s;
+        animation-delay: calc(var(--time) * 0.15);
+        animation-duration: calc(var(--time) * 0.4);
       }
-      /* Sterne drehen und poppen nacheinander auf */
       .loader__logo .star {
         transform-origin: 50% 50%;
         animation-name: star-in;
-        animation-duration: 0.22s;
+        animation-duration: calc(var(--time) * 0.3);
         animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       .loader__logo .star-top {
-        animation-delay: 0.16s;
+        animation-delay: calc(var(--time) * 0.45);
       }
       .loader__logo .star-left {
-        animation-delay: 0.21s;
+        animation-delay: calc(var(--time) * 0.55);
       }
       .loader__logo .star-right {
-        animation-delay: 0.26s;
+        animation-delay: calc(var(--time) * 0.65);
       }
       @keyframes bar-in {
         from {
@@ -140,9 +138,11 @@
     </div>
     <script>
       (() => {
-        const MIN_MS = 500;
-        const FADE_MS = 200;
         const loader = document.getElementById("loader");
+        const MIN_MS =
+          parseFloat(getComputedStyle(loader).getPropertyValue("--time")) *
+          1000;
+        const FADE_MS = 250;
         const start = performance.now();
         const hide = () => {
           loader.classList.add("is-hidden");
