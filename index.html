@@ -10,8 +10,147 @@
     <meta name="theme-color" content="#18181b" />
     <title>Abi-Rechner Gaesdonck</title>
     <link rel="stylesheet" href="style.css" />
+
+    <style>
+      .loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        background: var(--bg, #161618);
+        transition:
+          opacity 0.2s ease,
+          visibility 0.2s;
+      }
+      .loader.is-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .loader__logo {
+        width: min(26vw, 110px);
+        height: auto;
+        overflow: visible;
+        fill: #fff;
+      }
+      .loader__logo .part {
+        transform-box: fill-box;
+        animation-fill-mode: both;
+        animation-duration: 0.26s;
+        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      /* Querbalken wächst aus der Mitte */
+      .loader__logo .bar {
+        transform-origin: 50% 50%;
+        animation-name: bar-in;
+        animation-duration: 0.24s;
+      }
+      /* Stamm wächst von oben nach unten */
+      .loader__logo .stem {
+        transform-origin: 50% 0;
+        animation-name: stem-in;
+        animation-delay: 0.05s;
+      }
+      /* Sterne drehen und poppen nacheinander auf */
+      .loader__logo .star {
+        transform-origin: 50% 50%;
+        animation-name: star-in;
+        animation-duration: 0.22s;
+        animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .loader__logo .star-top {
+        animation-delay: 0.16s;
+      }
+      .loader__logo .star-left {
+        animation-delay: 0.21s;
+      }
+      .loader__logo .star-right {
+        animation-delay: 0.26s;
+      }
+      @keyframes bar-in {
+        from {
+          opacity: 0;
+          transform: scaleX(0.1);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes stem-in {
+        from {
+          transform: scaleY(0);
+        }
+        to {
+          transform: none;
+        }
+      }
+      @keyframes star-in {
+        from {
+          opacity: 0;
+          transform: scale(0.2) rotate(-60deg);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .loader__logo .part {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="loader" class="loader" aria-hidden="true">
+      <svg class="loader__logo" viewBox="147.3 32.1 13.7 17.4">
+        <rect
+          class="part bar"
+          x="147.526"
+          y="36.4883"
+          width="13.161"
+          height="2.7625"
+        />
+        <rect
+          class="part stem"
+          x="152.671"
+          y="39.2"
+          width="2.752"
+          height="10.0326"
+        />
+        <polygon
+          class="part star star-top"
+          points="154.01,32.3639 154.555,33.3407 155.646,33.3407 155.101,34.3175 155.646,35.2945 154.555,35.2945 154.01,36.2713 153.465,35.2945 152.375,35.2945 152.92,34.3175 152.375,33.3407 153.465,33.3407"
+        />
+        <polygon
+          class="part star star-left"
+          points="149.734,39.7456 150.289,40.7224 151.4,40.7224 150.844,41.6995 151.4,42.6762 150.289,42.6762 149.734,43.653 149.178,42.6762 148.068,42.6762 148.623,41.6995 148.068,40.7224 149.178,40.7224"
+        />
+        <polygon
+          class="part star star-right"
+          points="157.994,39.8447 158.534,40.8217 159.615,40.8217 159.074,41.7985 159.615,42.7753 158.534,42.7753 157.994,43.7523 157.454,42.7753 156.373,42.7753 156.913,41.7985 156.373,40.8217 157.454,40.8217"
+        />
+      </svg>
+    </div>
+    <script>
+      (() => {
+        const MIN_MS = 500;
+        const FADE_MS = 200;
+        const loader = document.getElementById("loader");
+        const start = performance.now();
+        const hide = () => {
+          loader.classList.add("is-hidden");
+          setTimeout(() => loader.remove(), FADE_MS + 50);
+        };
+        const onReady = () =>
+          setTimeout(hide, Math.max(0, MIN_MS - (performance.now() - start)));
+        if (document.readyState === "complete") onReady();
+        else window.addEventListener("load", onReady);
+      })();
+    </script>
+
     <main id="app"></main>
     <dialog id="dlg"></dialog>
     <input type="file" id="fi" accept=".json,application/json" hidden />
