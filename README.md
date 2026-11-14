@@ -1,33 +1,33 @@
-# Abi-Rechner Gaesdonck
+# Abi Calculator Gaesdonck
 
-Rechner für den Abiturschnitt nach der APO-GOSt NRW, abgestimmt auf die Fächer des Collegium Augustinianum Gaesdonck. Die Seite läuft komplett im Browser, auch auf dem Handy.
+A calculator for your Abitur average grade under the APO-GOSt NRW rules, tailored to the subjects offered at Collegium Augustinianum Gaesdonck. The site runs entirely in your browser, including on mobile.
 
 **Live:** https://Maximilian-Stapper.github.io/abi-rechner/
 
-## Benutzung
+## How to use
 
-1. **Einrichtung:** Beim ersten Öffnen trägst du ein, welche Fächer du in welchem Halbjahr (Q1.1 bis Q2.2) belegt hast und ob als Grundkurs mit Klausuren (S), ohne Klausuren (M), Leistungskurs (LK) oder Zusatzkurs (ZK). Danach wählst du deine vier Abiturfächer und optional Projektkurs, Advanced Class oder Facharbeit.
-2. **Noten eintragen:** Pro Kurs trägst du beliebig viele mündliche (optional gewichtet) und schriftliche Noten ein. Die Seite berechnet daraus eine vorläufige Kursnote (grau). Sobald du die echte Endnote einträgst, zählt sie als feststehend (blau).
-3. **Ergebnis:** Die Übersicht zeigt Hochrechnung der Abinote, Block I und II, Halbjahres- und Fachschnitte, Zulassungs-Check und die Rechenweise. Bei jedem Kurs steht, ob er Pflicht ist, zählt oder gestrichen wird.
+1. **Set up:** The first time you open the site, enter which subjects you take in each semester (Q1.1 through Q2.2), and whether each is an advanced course with exams (S), without exams (M), an advanced-level course (LK), or an additional course (ZK). Then select your four Abitur exam subjects and, optionally, a project course, Advanced Class, or research paper.
+2. **Enter grades:** For each course, enter any number of oral grades (optionally weighted) and written grades. The site calculates a provisional course grade (gray). Once you enter the official final grade, it is treated as confirmed (blue).
+3. **Results:** The overview shows your projected Abitur grade, Blocks I and II, semester and subject averages, an eligibility check, and the calculation method. Each course is marked as required, counted, or excluded.
 
-## Datenschutz und Sicherung
+## Privacy and backups
 
-- Alle Daten bleiben lokal in deinem Browser. Es gibt keinen Server, keine Anmeldung und keine Übertragung.
-- Browser können lokale Daten löschen, Safari zum Beispiel nach längerer Nichtnutzung. Speichere deshalb im Menü (⋯) regelmäßig eine **Sicherungsdatei**.
-- In einem neuen Browser kannst du die Sicherungsdatei direkt beim Start laden und überspringst die Einrichtung.
-- Tipp fürs Handy: Seite zum Home-Bildschirm hinzufügen.
+- All data stays local in your browser. There is no server, login, or data transfer.
+- Browsers may delete local data; Safari, for example, may do so after a long period of inactivity. Save a **backup file** regularly from the menu (⋯).
+- In a new browser, you can load the backup file when you first open the site and skip the setup.
+- Mobile tip: Add the site to your Home Screen.
 
-## Geprüft
+## Tested
 
-Die Rechenlogik wurde gegen die vier Beispiellaufbahnen im Merkblatt des Schulministeriums NRW zur Berechnung der Gesamtqualifikation (Stand August 2018) getestet. Block I stimmt in allen vier Fällen überein.
+The calculation logic was tested against the four sample academic pathways in the NRW Ministry of Education’s information sheet on calculating the overall qualification (as of August 2018). Block I matches in all four cases.
 
-## Einschränkungen
+## Limitations
 
-- Berechnete Kursnoten sind nur vorläufig. Verbindlich ist die Note, die die Lehrkraft festlegt.
-- Die Pflichtkurse für Gesellschaftswissenschaften und die Sonderregel für neu einsetzende Fremdsprachen sind vereinfacht. Die Obergrenze von 2 Literatur-Kursen wird nicht geprüft.
-- Grundlage ist die geltende APO-GOSt (Abitur 2028). Die Neufassung ab EF 2027/28 ist nicht umgesetzt.
-- Alle Angaben ohne Gewähr. Maßgeblich sind die Schule und das Ministerium für Schule und Bildung NRW.
+- Calculated course grades are provisional only. The grade assigned by the teacher is binding.
+- The required courses for social sciences and the special rule for foreign languages introduced at a later stage are simplified. The limit of two literature courses is not checked.
+- The calculator is based on the current APO-GOSt rules (Abitur 2028). The revised rules taking effect from the introductory phase in 2027/28 have not been implemented.
+- No guarantee is given. The school and the NRW Ministry of Education and Cultural Affairs are the authoritative sources.
 
-## Veröffentlichen (GitHub Pages)
+## Publishing (GitHub Pages)
 
-Datei `index.html` in ein Repository hochladen, unter *Settings → Pages* den Branch `main` und den Ordner `/ (root)` wählen.
+Upload the `index.html` file to a repository. Under *Settings → Pages*, select the `main` branch and the `/ (root)` folder.
