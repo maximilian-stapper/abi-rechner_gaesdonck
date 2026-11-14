@@ -289,3 +289,17 @@ summary {
 .mono {
   font-variant-numeric: tabular-nums;
 }
+td:first-child,
+th:first-child {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+}
+@media (max-width: 480px) {
+  table {
+    border-spacing: 3px;
+  }
+  .cell {
+    min-width: 44px;
+  }
+}
