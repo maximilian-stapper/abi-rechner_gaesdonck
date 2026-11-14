@@ -1,6 +1,6 @@
 const K = 'abirechner.gaesdonck.v1';
 const S = [
-  ['de', 'Deutsch', 'Aufgabenfeld I'],
+  ['de', 'Deutsch', 'Sprachen'],
   ['en', 'Englisch'],
   ['fr', 'Französisch'],
   ['la', 'Latein'],
@@ -9,12 +9,12 @@ const S = [
   ['ku', 'Kunst'],
   ['mu', 'Musik'],
   ['li', 'Literatur'],
-  ['ek', 'Erdkunde', 'Aufgabenfeld II'],
+  ['ek', 'Erdkunde', 'Sozialwissenschaften'],
   ['ge', 'Geschichte'],
   ['sw', 'Sozialwissenschaften'],
   ['re', 'Kath. Religionslehre'],
   ['sp', 'Sport', 'Ohne Aufgabenfeld'],
-  ['ma', 'Mathematik', 'Aufgabenfeld III'],
+  ['ma', 'Mathematik', 'Naturwissenschaften'],
   ['bi', 'Biologie'],
   ['ch', 'Chemie'],
   ['ph', 'Physik'],
