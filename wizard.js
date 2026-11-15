@@ -29,16 +29,16 @@ function wiz() {
                 .join('')}</select>`,
           )
           .join('')}</div>
- <div class=g><h2>Besonderes</h2><p class=d>Projektkurs, Advanced Class oder Facharbeit: nur eines davon. Die Note gilt für Q1.1 und Q1.2.</p><select id=spt><option value="">keins</option>${Object.entries(
+ <div class=g><h2>Besonderes</h2><p class=d>Projektkurs, Advanced Class oder Facharbeit: nur eines davon. Eine Note am Ende von Q1.2, sie zählt doppelt (auch für Q1.1).</p><select id=spt><option value="">keins</option>${Object.entries(
    SP,
  )
    .map(
      ([k, l]) =>
-       `<option value=${k} ${W.sp.type == k ? 'selected' : ''}>${l}</option>`,
+       `<option value=${k} ${Object.keys(W.sp)[0] == k ? 'selected' : ''}>${l}</option>`,
    )
    .join(
      '',
-   )}</select><h4>Name (optional)</h4><input id=spn value="${esc(W.sp.name || '')}" placeholder="z. B. Sport-Ernährung-Gesundheit"></div>
+   )}</select><h4>Name (optional)</h4><input id=spn value="${esc((Object.values(W.sp)[0] || {}).name || '')}" placeholder="z. B. Sport-Ernährung-Gesundheit"></div>
  <div id=msg class=d style="padding:0 6px;color:var(--w)"></div><div class=bar style="padding:0 4px"><button class=bt data-a=prev>Zurück</button><button class="bt pr" data-a=fin>Speichern und starten</button></div>`;
 }
 function finish() {
@@ -65,7 +65,8 @@ function finish() {
   if (hint.length && !confirm(hint.join('\n') + '\nTrotzdem speichern?'))
     return;
   W.af = af;
-  W.sp = { type: $('#spt').value, name: $('#spn').value.trim() };
+  const spType = $('#spt').value;
+  W.sp = spType ? { [spType]: { name: $('#spn').value.trim() } } : {};
   st = W;
   W = null;
   step = 1;

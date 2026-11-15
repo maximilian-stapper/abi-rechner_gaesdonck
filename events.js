@@ -77,7 +77,7 @@ document.addEventListener('change', (e) => {
       try {
         const s = JSON.parse(r.result);
         if (!s.cells || !s.g) throw 0;
-        st = s;
+        st = migrate(s);
         W = null;
         step = 1;
         save();

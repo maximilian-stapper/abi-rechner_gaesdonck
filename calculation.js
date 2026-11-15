@@ -4,12 +4,15 @@ function courses() {
     (st.cells[id] || []).forEach((t, i) => {
       if (t) a.push({ k: id + '.' + i, id, i, t });
     });
-  if (st.sp.type) a.push({ k: 'sp', id: 'sp', i: -1, t: 'B' });
+  // Projektkurs, Advanced Class, Facharbeit: je eine Note (Ende Q1.2), zählt doppelt
+  for (const type of Object.keys(SP))
+    if (st.sp[type])
+      a.push({ k: 'sp_' + type, id: 'sp_' + type, sp: type, i: -1, t: 'B' });
   return a;
 }
 const nm = (c) =>
   c.t == 'B'
-    ? SP[st.sp.type] + (st.sp.name ? ': ' + st.sp.name : '')
+    ? SP[c.sp] + (st.sp[c.sp].name ? ': ' + st.sp[c.sp].name : '')
     : NM[c.id];
 function pts(c) {
   const g = st.g[c.k] || {};
@@ -76,6 +79,7 @@ function solve() {
       .filter((c) => c.p != null),
     I = {};
   C.forEach((c) => (I[c.k] = c));
+  const Bs = C.filter((c) => c.t == 'B');
   if (!C.length) return null;
   const { must, alt } = groups(),
     ntot = C.reduce((a, c) => a + (c.t == 'B' ? 2 : 1), 0),
@@ -89,10 +93,12 @@ function solve() {
       pool = C.filter((c) => !F.has(c.k) && c.t != 'B').sort(
         (a, b) => b.p - a.p,
       );
-    for (const b of I.sp ? [0, 1] : [0])
+    for (let mask = 0; mask < 1 << Bs.length; mask++)
       for (let k = 0; k <= pool.length; k++) {
         const set = [...F].map((x) => I[x]).concat(pool.slice(0, k));
-        if (b) set.push(I.sp);
+        Bs.forEach((c, j) => {
+          if ((mask >> j) & 1) set.push(c);
+        });
         let P = 0,
           N = 0,
           cnt = 0,
