@@ -22,8 +22,14 @@
         /* Gesamtdauer des Loading Screens: nur diese Zahl ändern */
         --time: 2s;
 
+        --lift: 0px; /* Logo nach oben schieben, z. B. 24px */
+
         position: fixed;
-        inset: 0;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 100vh;
+        height: 100dvh; /* sichtbare Höhe auf dem iPhone, ohne Safari-Leiste */
         z-index: 9999;
         display: grid;
         place-items: center;
@@ -42,6 +48,7 @@
         height: auto;
         overflow: visible;
         fill: #fff;
+        transform: translateY(calc(var(--lift) * -1));
       }
       .loader__logo .part {
         transform-box: fill-box;
@@ -143,6 +150,11 @@
           opacity: 1;
           transform: none;
         }
+      }
+      /* Fix: Farbreste beim Umschalten der Felder (Weichzeichner-Bug bei Chrome/Safari) */
+      .g {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
       }
       @media (prefers-reduced-motion: reduce) {
         .loader__logo .part,
