@@ -314,3 +314,12 @@ th:first-child {
     font-size: 14px;
   }
 }
+
+html,
+body,
+dialog,
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
