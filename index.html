@@ -20,7 +20,7 @@
       .loader {
         --time: 2s;
 
-        --lift: 1000px; /* Logo nach oben schieben, z. B. 24px */
+        --lift: 24px; /* Logo um 24px nach oben */
 
         position: fixed;
         top: 0;
@@ -42,11 +42,14 @@
         pointer-events: none;
       }
       .loader__logo {
+      transform: translateY(calc(0px - var(--lift)));
+      }
+      /*.loader__logo {
         width: min(26vw, 110px);
         height: auto;
         overflow: visible;
         fill: #fff;
-        transform: translateY(calc(var(--lift) * -1));
+        transform: translateY(calc(var(--lift) * -1));*/
       }
       .loader__logo .part {
         transform-box: fill-box;
