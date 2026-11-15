@@ -20,7 +20,7 @@
       .loader {
         --time: 2s;
 
-        --lift: 500px; /* Logo um 24px nach oben */
+        --lift: 24px;
 
         position: fixed;
         top: 0;
@@ -42,14 +42,11 @@
         pointer-events: none;
       }
       .loader__logo {
-      transform: translateY(calc(0px - var(--lift)));
-      }
-      /*.loader__logo {
         width: min(26vw, 110px);
         height: auto;
         overflow: visible;
         fill: #fff;
-        transform: translateY(calc(var(--lift) * -1));*/
+        transform: translateY(calc(var(--lift) * -1));
       }
       .loader__logo .part {
         transform-box: fill-box;
