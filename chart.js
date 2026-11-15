@@ -1,8 +1,5 @@
-/* Verlauf der Hochrechnung: speichert die Punktzahl bei jeder Änderung und zeichnet sie als Linie.
-   Nach oben = besser (Abinote sinkt) = grün, nach unten = schlechter = rot. */
-const HIST_MAX = 40; // so viele Messpunkte werden höchstens gespeichert
+const HIST_MAX = 40;
 
-// Messpunkt speichern, wenn sich die Hochrechnung seit dem letzten Punkt geändert hat
 function record(G) {
   const h = (st.h = Array.isArray(st.h) ? st.h : []);
   if (h.length && h[h.length - 1][1] === G) return false;
@@ -11,7 +8,6 @@ function record(G) {
   return true;
 }
 
-// Punkte -> Abinote als Zahl (ohne Abrunden, damit die Linie auch kleine Änderungen zeigt)
 const noteExact = (G) => Math.max(1, (1020 - G) / 180);
 
 function trend() {
@@ -29,10 +25,10 @@ function trend() {
     v = h.map((p) => noteExact(p[1])),
     lo = Math.min(...v),
     hi = Math.max(...v),
-    span = Math.max(hi - lo, 0.3), // kleine Schwankungen nicht übertreiben
+    span = Math.max(hi - lo, 0.3),
     mid = (hi + lo) / 2,
     x = (i) => PX + (i * (W - 2 * PX)) / (n - 1),
-    y = (val) => H / 2 + ((val - mid) / span) * (H - 2 * PY), // bessere Note = weiter oben
+    y = (val) => H / 2 + ((val - mid) / span) * (H - 2 * PY),
     pts = v.map((val, i) => [x(i), y(val)]);
   let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   for (let i = 1; i < n; i++) {
