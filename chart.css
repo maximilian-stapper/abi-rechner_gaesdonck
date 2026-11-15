@@ -1,0 +1,74 @@
+/* Verlaufsgraph in der Hochrechnungs-Karte */
+.trend {
+  color: var(--d);
+  margin: 10px 0 6px;
+  text-align: left;
+}
+.trend.up {
+  color: var(--ok);
+}
+.trend.down {
+  color: var(--no);
+}
+.trend__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 0 2px;
+}
+.trend__head span {
+  color: var(--d);
+}
+.trend__head b {
+  font-weight: 600;
+}
+.trend svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  margin: 4px 0 2px;
+}
+.trend__line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  animation: trend-draw 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.trend__dot {
+  fill: currentColor;
+}
+.trend__halo {
+  fill: currentColor;
+  opacity: 0.25;
+}
+.trend__foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--d);
+  padding: 0 2px;
+}
+.trend__hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--d);
+  text-align: center;
+}
+@keyframes trend-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trend__line {
+    animation: none;
+  }
+}

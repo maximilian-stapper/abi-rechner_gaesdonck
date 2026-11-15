@@ -19,6 +19,7 @@ function ov() {
     C = r.C,
     ck = (l, s) => `<li class="${s}">${l}</li>`,
     pf = T.done ? '' : ' (Prognose)';
+  if (record(T.G)) save();
   const hs = [0, 1, 2, 3].map((i) => [
       SEM[i],
       wm(C.filter((c) => c.i == i || (c.t == 'B' && i < 2))),
@@ -32,7 +33,7 @@ function ov() {
       a.reduce((x, y) => x + y, 0) / a.length,
     ]),
     out = r.C.filter((c) => !r.keys.has(c.k)).map(nm);
-  return `<div class="g hero"><div class=d>${T.fin ? 'Endergebnis' : 'Hochrechnung'}</div><div class="big mono">${grade(T.G)}</div><div class=d>${T.G} von 900 Punkten · Block I ${r.b1} · Block II ${T.b2}${pf}</div>
+  return `<div class="g hero"><div class=d>${T.fin ? 'Endergebnis' : 'Hochrechnung'}</div><div class="big mono">${grade(T.G)}</div>${trend()}<div class=d>${T.G} von 900 Punkten · Block I ${r.b1} · Block II ${T.b2}${pf}</div>
  <div class=prog><i style="width:${Math.round((nf / cs.length) * 100)}%"></i></div><small>${nf} von ${cs.length} Kursen mit Endnote</small></div>
  <div class=g><h2>Zulassungs-Check</h2><ul>${ck(`Kurse mit Note: ${r.ntot} (35–40 nötig)`, r.ntot < 35 ? '' : r.cnt >= 35 && r.cnt <= 40 ? 'ok' : 'no')}
  ${ck(`Defizite: ${r.d} (max. ${r.cnt <= 37 ? 7 : 8}), davon Leistungskurs ${r.ld} (max. 3)`, r.ntot < 35 ? '' : r.ok ? 'ok' : 'no')}${ck(`Block I mindestens 200: ${r.b1}`, r.b1 >= 200 ? 'ok' : 'no')}

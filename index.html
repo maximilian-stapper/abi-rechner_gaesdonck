@@ -10,12 +10,15 @@
     <meta name="theme-color" content="#18181b" />
     <title>Abi-Rechner Gaesdonck</title>
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="chart.css" />
     <meta name="apple-mobile-web-app-title" content="Abi-Rechner" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="apple-touch-icon.png" />
 
+    <!-- Loading Screen (bewusst inline, damit er sofort beim Laden sichtbar ist) -->
     <style>
       .loader {
+        /* Gesamtdauer des Loading Screens: nur diese Zahl ändern */
         --time: 2s;
 
         position: fixed;
@@ -23,7 +26,7 @@
         z-index: 9999;
         display: grid;
         place-items: center;
-        background: var(--bg, #000000);
+        background: var(--bg, #161618);
         transition:
           opacity 0.25s ease,
           visibility 0.25s;
@@ -44,17 +47,20 @@
         animation-fill-mode: both;
         animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
       }
+      /* Querbalken wächst aus der Mitte */
       .loader__logo .bar {
         transform-origin: 50% 50%;
         animation-name: bar-in;
         animation-duration: calc(var(--time) * 0.35);
       }
+      /* Stamm wächst von oben nach unten */
       .loader__logo .stem {
         transform-origin: 50% 0;
         animation-name: stem-in;
         animation-delay: calc(var(--time) * 0.15);
         animation-duration: calc(var(--time) * 0.4);
       }
+      /* Sterne drehen und poppen nacheinander auf */
       .loader__logo .star {
         transform-origin: 50% 50%;
         animation-name: star-in;
@@ -137,21 +143,22 @@
       </svg>
     </div>
     <script>
+      // Loading Screen ausblenden: nach --time (siehe CSS), aber erst wenn die Seite geladen ist
       (() => {
-        const loader = document.getElementById("loader");
+        const loader = document.getElementById('loader');
         const MIN_MS =
-          parseFloat(getComputedStyle(loader).getPropertyValue("--time")) *
+          parseFloat(getComputedStyle(loader).getPropertyValue('--time')) *
           1000;
-        const FADE_MS = 250;
+        const FADE_MS = 250; // muss zur CSS-Transition (.loader) passen
         const start = performance.now();
         const hide = () => {
-          loader.classList.add("is-hidden");
+          loader.classList.add('is-hidden');
           setTimeout(() => loader.remove(), FADE_MS + 50);
         };
         const onReady = () =>
           setTimeout(hide, Math.max(0, MIN_MS - (performance.now() - start)));
-        if (document.readyState === "complete") onReady();
-        else window.addEventListener("load", onReady);
+        if (document.readyState === 'complete') onReady();
+        else window.addEventListener('load', onReady);
       })();
     </script>
 
@@ -159,9 +166,11 @@
     <dialog id="dlg"></dialog>
     <input type="file" id="fi" accept=".json,application/json" hidden />
 
+    <!-- Reihenfolge beachten: alle Skripte teilen sich den globalen Scope -->
     <script src="constants.js"></script>
     <script src="state.js"></script>
     <script src="calculation.js"></script>
+    <script src="chart.js"></script>
     <script src="views.js"></script>
     <script src="dialogs.js"></script>
     <script src="wizard.js"></script>
