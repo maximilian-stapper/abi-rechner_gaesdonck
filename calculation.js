@@ -29,7 +29,16 @@ function pts(c) {
     o == null ? w : w == null ? o : c.t == 'S' || c.t == 'LK' ? (o + w) / 2 : o;
   return { p: p == null ? null : R(p), fin: 0 };
 }
-function groups() {
+// Fächer einer Gruppe (Fremdsprache bzw. Naturwissenschaft), aus denen ein durchgehend belegtes
+// Fach komplett zählen muss. Hat man dort einen Leistungskurs oder ein Abiturfach, ist das
+// schon das Fach (wird ohnehin eingebracht). Sonst kommen alle durchgehend belegten in Frage.
+function candidates(list) {
+  const ce = (id) => st.cells[id] || [],
+    full = list.filter((id) => ce(id).filter((x) => x).length == 4),
+    top = full.filter((id) => ce(id).includes('LK') || st.af[id] > 0);
+  return top.length ? [top[0]] : full.length ? full : [undefined];
+}
+function groups(fsPick, nwPick) {
   const ce = (id) => st.cells[id] || [],
     n = (id) => ce(id).filter((x) => x).length,
     ks = (id) => [0, 1, 2, 3].filter((i) => ce(id)[i]).map((i) => id + '.' + i);
@@ -47,7 +56,7 @@ function groups() {
     if (top(id)) add(id);
   });
   ['de', 'ma'].forEach(add);
-  [pick(FS), pick(NW), pick(GW)].forEach((id) => id && add(id));
+  [fsPick, nwPick, pick(GW)].forEach((id) => id && add(id));
   GW.forEach((id) => {
     if (!done.has(id)) add(id);
   });
@@ -81,8 +90,8 @@ function solve() {
   C.forEach((c) => (I[c.k] = c));
   const Bs = C.filter((c) => c.t == 'B');
   if (!C.length) return null;
-  const { must, alt } = groups(),
-    ntot = C.reduce((a, c) => a + (c.t == 'B' ? 2 : 1), 0),
+  let must, alt;
+  const ntot = C.reduce((a, c) => a + (c.t == 'B' ? 2 : 1), 0),
     cons = ntot >= 35;
   let best = null,
     any = null;
@@ -116,7 +125,7 @@ function solve() {
           }
         }
         if (!N) continue;
-        const r = { set, P, N, cnt, d, ld };
+        const r = { set, P, N, cnt, d, ld, must };
         if (better(r, any)) any = r;
         if (
           !cons ||
@@ -130,12 +139,15 @@ function solve() {
     if (i == alt.length) return ev(ch);
     for (const o of alt[i]) rec(i + 1, ch.concat(o));
   };
-  rec(0, []);
+  for (const fs of candidates(FS))
+    for (const nw of candidates(NW)) {
+      ({ must, alt } = groups(fs, nw));
+      rec(0, []);
+    }
   const r = best || any;
   if (!r) return null;
   r.ok = !!best;
   r.keys = new Set(r.set.map((c) => c.k));
-  r.must = must;
   r.avg = r.P / r.N;
   r.b1 = Math.min(600, R(r.avg * 40));
   r.ntot = ntot;
