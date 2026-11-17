@@ -2,7 +2,7 @@ function wiz() {
   if (!W) W = JSON.parse(JSON.stringify(st || fresh()));
   $('#app').innerHTML =
     step == 1
-      ? `<div class=top><h1>Einrichtung 1/2</h1></div>${st ? '' : '<div class=g><h2>Schon eine Sicherungsdatei?</h2><p class=d>Lade sie hier, dann entfällt die Einrichtung.</p><button class="bt pr" data-a=im>Sicherungsdatei laden</button></div>'}<div class=g><h2>Welche Fächer hast du wann belegt?</h2><p class=d>Tippe ein Feld mehrfach: leer → S (Grundkurs mit Klausuren) → M (Grundkurs ohne Klausuren) → LK (Leistungskurs) → ZK (Zusatzkurs). Nur die Q-Phase zählt.</p>
+      ? `<div class=top><h1>Einrichtung 1/2</h1></div><div class=g><h2>Aus LuPO übernehmen</h2><p class=d>Lade deine LuPO-Datei (.lpo): Fächer, Kursarten und Abiturfächer werden automatisch ausgefüllt. Die Datei wird nur in deinem Browser gelesen und nirgendwohin hochgeladen. Übernommen werden nur die Fächer der Q-Phase, keine persönlichen Daten.</p>${impInfo ? `<p style="margin:6px 0;color:var(--ok)">✓ ${impInfo.n} Fächer übernommen. Abiturfächer: ${impInfo.af.map(esc).join(', ') || 'keine erkannt'}. Prüfe die Tabelle und tippe auf Weiter.</p>` : ''}<button class="bt pr" data-a=lp>LuPO-Datei laden</button></div>${st ? '' : '<div class=g><h2>Schon eine Sicherungsdatei?</h2><p class=d>Lade sie hier, dann entfällt die Einrichtung.</p><button class=bt data-a=im>Sicherungsdatei laden</button></div>'}<div class=g><h2>Welche Fächer hast du wann belegt?</h2><p class=d>Tippe ein Feld mehrfach: leer → S (Grundkurs mit Klausuren) → M (Grundkurs ohne Klausuren) → LK (Leistungskurs) → ZK (Zusatzkurs). Nur die Q-Phase zählt.</p>
  <table><tr><th></th>${SEM.map((s) => `<th>${s}</th>`).join('')}</tr>${S.map(
    ([id, n, gr]) =>
      (gr ? `<tr class=grp><td colspan=5>${gr}</td></tr>` : '') +
@@ -29,7 +29,7 @@ function wiz() {
                 .join('')}</select>`,
           )
           .join('')}</div>
- <div class=g><h2>Besonderes</h2><p class=d>Projektkurs, Advanced Class oder Facharbeit: nur eines davon. Eine Note am Ende von Q1.2, sie zählt doppelt (auch für Q1.1).</p><select id=spt><option value="">keins</option>${Object.entries(
+ <div class=g><h2>Besonderes</h2><p class=d>Projektkurs, Advanced Class oder Facharbeit: nur eines davon. Eine Note am Ende von Q1.2, sie zählt doppelt (auch für Q1.1).</p>${impInfo ? (impInfo.pk ? '<p style="margin:6px 0;color:var(--ok)">✓ Projektkurs aus LuPO übernommen. Trag unten bitte seinen Namen ein.</p>' : '<p style="margin:6px 0;color:var(--w)">In deiner LuPO-Wahl steht kein Projektkurs. Dann hast du eine Advanced Class oder eine Facharbeit: bitte unten auswählen.</p>') : ''}<select id=spt><option value="">keins</option>${Object.entries(
    SP,
  )
    .map(
@@ -65,6 +65,7 @@ function finish() {
   if (hint.length && !confirm(hint.join('\n') + '\nTrotzdem speichern?'))
     return;
   W.af = af;
+  impInfo = null;
   const spType = $('#spt').value;
   W.sp = spType ? { [spType]: { name: $('#spn').value.trim() } } : {};
   st = W;

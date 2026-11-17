@@ -29,6 +29,7 @@ document.addEventListener('click', (e) => {
     scrollTo(0, 0);
   } else if (a == 'back') {
     W = null;
+    impInfo = null;
     step = 1;
     render();
   } else if (a == 'fin') finish();
@@ -47,6 +48,7 @@ document.addEventListener('click', (e) => {
     l.click();
     setTimeout(() => URL.revokeObjectURL(u), 2000);
   } else if (a == 'im') $('#fi').click();
+  else if (a == 'lp') $('#lf').click();
   else if (
     a == 'rs' &&
     confirm('Wirklich alle Fächer und Noten auf diesem Gerät löschen?')
@@ -69,6 +71,13 @@ document.addEventListener('change', (e) => {
     st.x[n][f] = cl(t.value);
     save();
     render();
+  } else if (t.id == 'lf' && t.files[0]) {
+    const fl = t.files[0],
+      r = new FileReader();
+    t.value = '';
+    r.onload = () => lupoImport(r.result);
+    r.onerror = () => alert('Die Datei konnte nicht gelesen werden.');
+    r.readAsArrayBuffer(fl);
   } else if (t.id == 'fi' && t.files[0]) {
     const fl = t.files[0],
       r = new FileReader();
