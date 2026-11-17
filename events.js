@@ -14,11 +14,18 @@ document.addEventListener('click', (e) => {
     c[i] = v;
     t.dataset.v = v;
     t.textContent = v || '·';
-  } else if (a == 'cx') $('#dlg').close();
+  } else if (a == 'sc') actv(t);
+  else if (a == 'pc') pick(d.p);
+  else if (a == 'cx') $('#dlg').close();
   else if (a == 'sv') saveEdit(d.k);
   else if (a == 'menu') menu();
-  else if (a == 'am') $('#mr').insertAdjacentHTML('beforeend', mrow({ n: '' }));
-  else if (a == 'as') $('#sr').insertAdjacentHTML('beforeend', srow(''));
+  else if (a == 'am') {
+    $('#mr').insertAdjacentHTML('beforeend', mrow({ n: '' }));
+    actv($('#mr').lastElementChild.querySelector('.sc'));
+  } else if (a == 'as') {
+    $('#sr').insertAdjacentHTML('beforeend', srow(''));
+    actv($('#sr').lastElementChild.querySelector('.sc'));
+  }
   else if (a == 'next') {
     step = 2;
     wiz();

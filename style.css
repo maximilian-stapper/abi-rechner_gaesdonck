@@ -323,3 +323,180 @@ select,
 textarea {
   color-scheme: dark;
 }
+
+/* Noteneingabe mit Farbskala (dialogs.js) */
+dialog.ed[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ed h3 {
+  flex: none;
+}
+.ed .dbody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 -6px;
+  padding: 0 6px 16px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+}
+.ed .dbody > h4:first-child {
+  margin-top: 4px;
+}
+.ed .dbody .bt {
+  width: auto;
+  display: inline-block;
+  margin: 4px 0 0;
+}
+.sc {
+  flex: 1.5;
+  min-width: 0;
+  min-height: 48px;
+  display: flex;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: 13px;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--d);
+  text-align: left;
+  cursor: pointer;
+  align-items: center;
+}
+.ir > .sc {
+  flex: 1.4 1 0;
+}
+.ir > .sc ~ input {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+.sc.has {
+  border: 1px solid rgba(var(--c), 0.85);
+  background: rgba(var(--c), 0.18);
+  color: var(--t);
+}
+.sc b {
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  color: rgb(var(--c));
+  font-variant-numeric: tabular-nums;
+}
+.sc small {
+  font-size: 13px;
+  color: var(--d);
+}
+.sc.on {
+  outline: 2px solid var(--b);
+  outline-offset: 2px;
+}
+.dock {
+  flex: none;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.dh {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--d);
+}
+.lk {
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  font-size: 13px;
+  color: var(--b);
+  cursor: pointer;
+}
+.scale {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+.pc {
+  height: 50px;
+  padding: 0;
+  border-radius: 11px;
+  border: 1px solid rgba(var(--c), 0.85);
+  background: rgba(var(--c), 0.3);
+  color: var(--t);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.pc b {
+  font-size: 16px;
+  letter-spacing: -0.3px;
+}
+.pc small {
+  font-size: 11px;
+  color: inherit;
+  opacity: 0.75;
+}
+.pc:active {
+  transform: scale(0.93);
+}
+.pc.sel {
+  background: rgb(var(--c));
+  border-color: #fff;
+  color: #0e0e10;
+  box-shadow: 0 0 0 1px #fff;
+}
+.pc.sel small {
+  opacity: 0.8;
+}
+.ed .dock .bar {
+  margin-top: 10px;
+}
+.sc:focus-visible,
+.pc:focus-visible,
+.lk:focus-visible {
+  outline: 2px solid var(--b);
+  outline-offset: 2px;
+}
+@media (max-height: 560px) {
+  .pc {
+    height: 40px;
+  }
+  .pc small,
+  .dh span {
+    display: none;
+  }
+  .dh {
+    justify-content: flex-end;
+    margin-bottom: 2px;
+  }
+}
+@media (max-height: 560px) and (min-width: 600px) {
+  dialog.ed {
+    width: min(92vw, 720px);
+  }
+  .scale {
+    grid-template-columns: repeat(16, 1fr);
+    gap: 3px;
+  }
+  .pc {
+    height: 46px;
+  }
+  .pc small {
+    display: block;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pc {
+    transition: none;
+  }
+}

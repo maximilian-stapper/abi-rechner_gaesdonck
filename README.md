@@ -7,7 +7,7 @@ A calculator for your Abitur average grade under the APO-GOSt NRW rules, tailore
 ## How to use
 
 1. **Set up:** The first time you open the site, you can load your **LuPO file** (`.lpo`) to fill in the subjects, course types and Abitur subjects automatically (see below). Or enter which subjects you take in each semester (Q1.1 through Q2.2), and whether each is an advanced course with exams (S), without exams (M), an advanced-level course (LK), or an additional course (ZK). Then select your four Abitur exam subjects and, optionally, a project course, Advanced Class, or research paper.
-2. **Enter grades:** For each course, enter any number of oral grades (optionally weighted) and written grades. The site calculates a provisional course grade (gray). Once you enter the official final grade, it is treated as confirmed (blue).
+2. **Enter grades:** For each course, add any number of oral grades (optionally weighted) and written grades. You pick each grade on a color scale from red to green that shows both the grade (1+ to 6) and the points (15 to 0), so you do not need to know the points by heart. The site calculates a provisional course grade (gray). Once you enter the official final grade, it is treated as confirmed (blue).
 3. **Results:** The overview shows your projected Abitur grade, Blocks I and II, semester and subject averages, an eligibility check, and the calculation method. Each course is marked as required, counted, or excluded.
 
 ## LuPO import
