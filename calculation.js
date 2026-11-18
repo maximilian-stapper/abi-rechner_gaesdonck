@@ -38,7 +38,7 @@ function candidates(list) {
     top = full.filter((id) => ce(id).includes('LK') || st.af[id] > 0);
   return top.length ? [top[0]] : full.length ? full : [undefined];
 }
-function groups(fsPick, nwPick) {
+function groups(fsPick, nwPick, gwPick, I) {
   const ce = (id) => st.cells[id] || [],
     n = (id) => ce(id).filter((x) => x).length,
     ks = (id) => [0, 1, 2, 3].filter((i) => ce(id)[i]).map((i) => id + '.' + i);
@@ -50,16 +50,11 @@ function groups(fsPick, nwPick) {
       ks(id).forEach((k) => must.add(k));
       done.add(id);
     };
-  const pick = (l) =>
-    l.find((id) => top(id) && n(id) == 4) || l.find((id) => n(id) == 4);
   S.forEach(([id]) => {
     if (top(id)) add(id);
   });
   ['de', 'ma'].forEach(add);
-  [fsPick, nwPick, pick(GW)].forEach((id) => id && add(id));
-  GW.forEach((id) => {
-    if (!done.has(id)) add(id);
-  });
+  [fsPick, nwPick, gwPick].forEach((id) => id && add(id));
   S.forEach(([id]) =>
     ce(id).forEach((t, i) => {
       if (t == 'ZK') must.add(id + '.' + i);
@@ -68,6 +63,20 @@ function groups(fsPick, nwPick) {
   const pairs = (a) =>
     a.length < 2 ? [a] : a.flatMap((x, i) => a.slice(i + 1).map((y) => [x, y]));
   if (!done.has('re') && n('re')) alt.push(pairs(ks('re')));
+  // § 11 Abs. 3 + § 28 Abs. 3 APO-GOSt: Eine Gesellschaftswissenschaft komplett (gwPick, oben). Dazu je zwei Kurse
+  // in Geschichte und Sozialwissenschaften, falls das nicht schon dieses Fach ist. Zusatzkurse (ZK) zählen dafür.
+  // Verpflichtend sind die zwei punktbesten Kurse; mehr als zwei sind freiwillig (Wahlkurse).
+  const pv = (k) => (I && I[k] ? I[k].p : -1);
+  ['ge', 'sw'].forEach((id) => {
+    if (done.has(id)) return;
+    const need = 2 - ks(id).filter((k) => must.has(k)).length;
+    if (need > 0)
+      ks(id)
+        .filter((k) => !must.has(k))
+        .sort((a, b) => pv(b) - pv(a))
+        .slice(0, need)
+        .forEach((k) => must.add(k));
+  });
   const km = [];
   ['ku', 'mu'].forEach((id) => {
     if (!done.has(id))
@@ -125,7 +134,7 @@ function solve() {
           }
         }
         if (!N) continue;
-        const r = { set, P, N, cnt, d, ld, must };
+        const r = { set, P, N, cnt, d, ld, must: F };
         if (better(r, any)) any = r;
         if (
           !cons ||
@@ -140,10 +149,11 @@ function solve() {
     for (const o of alt[i]) rec(i + 1, ch.concat(o));
   };
   for (const fs of candidates(FS))
-    for (const nw of candidates(NW)) {
-      ({ must, alt } = groups(fs, nw));
-      rec(0, []);
-    }
+    for (const nw of candidates(NW))
+      for (const gw of candidates(GW)) {
+        ({ must, alt } = groups(fs, nw, gw, I));
+        rec(0, []);
+      }
   const r = best || any;
   if (!r) return null;
   r.ok = !!best;

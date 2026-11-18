@@ -31,7 +31,7 @@ The calculation logic was tested against the four sample academic pathways in th
 ## Limitations
 
 - Calculated course grades are provisional only. The grade assigned by the teacher is binding.
-- The required courses for social sciences and the special rule for foreign languages introduced at a later stage are simplified. The limit of two literature courses is not checked.
+- Social sciences follow § 11 (3) APO-GOSt: one subject must count in full, plus two courses each in history and social sciences (additional courses are optional). The special rule for foreign languages introduced at a later stage is simplified. The limits on the number of courses per subject (including two literature courses) are not checked.
 - The calculator is based on the current APO-GOSt rules (Abitur 2028). The revised rules taking effect from the introductory phase in 2027/28 have not been implemented.
 - No guarantee is given. The school and the NRW Ministry of Education and Cultural Affairs are the authoritative sources.
 
