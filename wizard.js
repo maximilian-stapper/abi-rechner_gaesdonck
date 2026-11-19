@@ -1,5 +1,13 @@
+// Auswahl eines Pflichtfachs (Einrichtung, Schritt 2). Leer = der Rechner wählt automatisch die günstigste zulässige Möglichkeit.
+function pfSel(key, label, list) {
+  const ok = list.filter((id) => (W.cells[id] || []).filter((x) => x).length == 4);
+  return `<h4>${label}</h4><select data-pf="${key}"><option value="">automatisch (günstigste Wahl)</option>${ok
+    .map((id) => `<option value="${id}" ${(W.pf || {})[key] == id ? 'selected' : ''}>${NM[id]}</option>`)
+    .join('')}</select>`;
+}
 function wiz() {
   if (!W) W = JSON.parse(JSON.stringify(st || fresh()));
+  if (!W.pf) W.pf = {};
   $('#app').innerHTML =
     step == 1
       ? `<div class=top><h1>Einrichtung 1/2</h1></div><div class=g><h2>Aus LuPO übernehmen</h2><p class=d>Lade deine LuPO-Datei (.lpo): Fächer, Kursarten und Abiturfächer werden automatisch ausgefüllt. Die Datei wird nur in deinem Browser gelesen und nirgendwohin hochgeladen. Übernommen werden nur die Fächer der Q-Phase, keine persönlichen Daten.</p>${impInfo ? `<p style="margin:6px 0;color:var(--ok)">✓ ${impInfo.n} Fächer übernommen. Abiturfächer: ${impInfo.af.map(esc).join(', ') || 'keine erkannt'}. Prüfe die Tabelle und tippe auf Weiter.</p>` : ''}<button class="bt pr" data-a=lp>LuPO-Datei laden</button></div>${st ? '' : '<div class=g><h2>Schon eine Sicherungsdatei?</h2><p class=d>Lade sie hier, dann entfällt die Einrichtung.</p><button class=bt data-a=im>Sicherungsdatei laden</button></div>'}<div class=g><h2>Welche Fächer hast du wann belegt?</h2><p class=d>Tippe ein Feld mehrfach: leer → S (Grundkurs mit Klausuren) → M (Grundkurs ohne Klausuren) → LK (Leistungskurs) → ZK (Zusatzkurs). Nur die Q-Phase zählt.</p>
@@ -29,7 +37,8 @@ function wiz() {
                 .join('')}</select>`,
           )
           .join('')}</div>
- <div class=g><h2>Besonderes</h2><p class=d>Projektkurs, Advanced Class oder Facharbeit: nur eines davon. Eine Note am Ende von Q1.2, sie zählt doppelt (auch für Q1.1).</p>${impInfo ? (impInfo.pk ? '<p style="margin:6px 0;color:var(--ok)">✓ Projektkurs aus LuPO übernommen. Trag unten bitte seinen Namen ein.</p>' : '<p style="margin:6px 0;color:var(--w)">In deiner LuPO-Wahl steht kein Projektkurs. Dann hast du eine Advanced Class oder eine Facharbeit: bitte unten auswählen.</p>') : ''}<select id=spt><option value="">keins</option>${Object.entries(
+ <div class=g><h2>Pflichtfächer (optional)</h2><p class=d>Der Rechner erkennt aus deiner Fächerwahl, welche Kurse in Block I Pflicht sind, und wählt bei mehreren Möglichkeiten automatisch die günstigste. Wenn du weißt, welches Fach in deiner Laufbahn gilt, lege es hier fest.</p>${pfSel('fs', 'Fortgeführte Fremdsprache', FS)}${pfSel('nw', 'Naturwissenschaft', NW)}${pfSel('gw', 'Gesellschaftswissenschaft', GW)}${pfSel('sf', 'Schwerpunktfach (9. Pflichtfach: weitere Fremdsprache oder MINT-Fach)', SF)}${(W.cells.es || []).some((x) => x) ? `<label class=ir style="margin-top:10px;align-items:flex-start"><input type=checkbox id=nz2 ${W.nz2 ? 'checked' : ''} style="width:auto;margin-top:3px"><span class=d>Ich hatte in der Sekundarstufe I keine zweite Fremdsprache und habe Spanisch deshalb ab der EF neu begonnen. Dann muss Spanisch eingebracht werden (die Q2-Kurse, als einzige Fremdsprache alle vier).</span></label>` : ''}</div>
+ <div class=g><h2>Besonderes</h2><p class=d>Projektkurs oder Advanced Class (in Q1): eine Note am Ende von Q1.2, sie zählt doppelt (auch für Q1.1). Das ist freiwillig: Der Rechner bringt sie nur ein, wenn sie deinen Schnitt verbessert. Eine Facharbeit gehört nicht hierher: Sie ersetzt eine Klausur in Q1.2, trag ihre Note dort als Klausur ein.</p>${impInfo ? (impInfo.pk ? '<p style="margin:6px 0;color:var(--ok)">✓ Projektkurs aus LuPO übernommen. Trag unten bitte seinen Namen ein.</p>' : '<p style="margin:6px 0;color:var(--w)">In deiner LuPO-Wahl steht kein Projektkurs. Belegst du eine Advanced Class, wähle sie bitte unten aus. Schreibst du eine Facharbeit, wähle „keins“.</p>') : ''}<select id=spt><option value="">keins</option>${Object.entries(
    SP,
  )
    .map(
@@ -64,7 +73,18 @@ function finish() {
   }
   if (hint.length && !confirm(hint.join('\n') + '\nTrotzdem speichern?'))
     return;
+  const pf = {};
+  document.querySelectorAll('[data-pf]').forEach((x) => {
+    if (x.value) pf[x.dataset.pf] = x.value;
+  });
+  if (pf.sf && (pf.sf == pf.fs || pf.sf == pf.nw)) {
+    $('#msg').textContent =
+      'Das Schwerpunktfach muss ein anderes Fach sein als die Fremdsprache bzw. die Naturwissenschaft.';
+    return;
+  }
+  W.pf = pf;
   W.af = af;
+  W.nz2 = !!($('#nz2') && $('#nz2').checked && (W.cells.es || []).some((x) => x));
   impInfo = null;
   const spType = $('#spt').value;
   W.sp = spType ? { [spType]: { name: $('#spn').value.trim() } } : {};

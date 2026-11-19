@@ -67,10 +67,10 @@ function edit(k) {
   d.innerHTML =
     `<h3>${esc(nm(c))}</h3><div class=dbody>` +
     (b
-      ? '<small>Eine Note zählt für Q1.1 und Q1.2.</small>'
+      ? '<small>Eine Note zählt für Q1.1 und Q1.2 (doppelt). Freiwillig: Sie wird nur eingebracht, wenn sie deinen Schnitt verbessert.</small>'
       : `<h4>Mündlich (Gewicht optional)</h4><div id=mr>${(g.m && g.m.length ? g.m : [{ n: '', w: '' }]).map(mrow).join('')}</div><button class=bt data-a=am>+ Note</button>` +
         (sc
-          ? `<h4>Schriftlich</h4><div id=sr>${(g.s && g.s.length ? g.s : ['']).map(srow).join('')}</div><button class=bt data-a=as>+ Klausur</button>`
+          ? `<h4>Schriftlich</h4>${c.i == 1 ? '<small>Facharbeit in diesem Fach? Sie ersetzt eine Klausur: trag ihre Note einfach als Klausur ein.</small>' : ''}<div id=sr>${(g.s && g.s.length ? g.s : ['']).map(srow).join('')}</div><button class=bt data-a=as>+ Klausur</button>`
           : '')) +
     `<h4>Endnote (von der Lehrkraft festgelegt)</h4><div class=ir>${sv(g.f ?? '', 'leer = vorläufig', 'fin')}</div></div>` +
     `<div class=dock><div class=dh><span>Tippe auf eine Note</span><button type=button class=lk data-a=pc data-p="">Feld leeren</button></div><div class=scale>${scale()}</div><div class=bar><button class=bt data-a=cx>Abbrechen</button><button class="bt pr" data-a=sv data-k="${k}">Speichern</button></div></div>`;

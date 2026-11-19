@@ -190,6 +190,9 @@ select {
 .gestrichen {
   color: var(--no);
 }
+.wählbar {
+  color: var(--d);
+}
 ul {
   list-style: none;
   padding: 0;

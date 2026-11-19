@@ -6,15 +6,35 @@ A calculator for your Abitur average grade under the APO-GOSt NRW rules, tailore
 
 ## How to use
 
-1. **Set up:** The first time you open the site, you can load your **LuPO file** (`.lpo`) to fill in the subjects, course types and Abitur subjects automatically (see below). Or enter which subjects you take in each semester (Q1.1 through Q2.2), and whether each is an advanced course with exams (S), without exams (M), an advanced-level course (LK), or an additional course (ZK). Then select your four Abitur exam subjects and, optionally, a project course, Advanced Class, or research paper.
+1. **Set up:** The first time you open the site, you can load your **LuPO file** (`.lpo`) to fill in the subjects, course types and Abitur subjects automatically (see below). Or enter which subjects you take in each semester (Q1.1 through Q2.2), and whether each is an advanced course with exams (S), without exams (M), an advanced-level course (LK), or an additional course (ZK). Then select your four Abitur exam subjects and, optionally, a project course or Advanced Class. A *Facharbeit* (research paper) only replaces one Klausur in Q1.2; enter its grade there as a written grade.
 2. **Enter grades:** For each course, add any number of oral grades (optionally weighted) and written grades. You pick each grade on a color scale from red to green that shows both the grade (1+ to 6) and the points (15 to 0), so you do not need to know the points by heart. The site calculates a provisional course grade (gray). Once you enter the official final grade, it is treated as confirmed (blue).
-3. **Results:** The overview shows your projected Abitur grade, Blocks I and II, semester and subject averages, an eligibility check, and the calculation method. Each course is marked as required, counted, or excluded.
+3. **Results:** The overview shows your projected Abitur grade, Blocks I and II, semester and subject averages, an eligibility check, and the calculation method. Each course is marked as required (*Pflicht*), counted (*zählt*), excluded (*gestrichen*) or still open (*wählbar*).
+
+## How Block I is chosen
+
+The calculator knows the rules before you have a single grade, and then picks the courses that give the best average.
+
+- **Required courses** (§ 28 APO-GOSt, valid from 1 Aug 2025): all four courses of the four Abitur subjects; German and Mathematics; one continuously taken foreign language, one natural science and one social science (four courses each); two courses each in History and Social Sciences if that is not already your social science (additional courses, *ZK*, are required); two courses of Religion; two consecutive courses of Art or Music (or two of Literature); and the two Q2 courses of your *Schwerpunktfach* (9th compulsory subject: another foreign language or another MINT subject, § 28 (6)). If the Schwerpunktfach is a natural science, it may swap roles with your natural science (VV 28.3.1). Without a Schwerpunktfach the eligibility check reports a violation.
+- **Spanish from EF** is a normal subject. Only if you had no second foreign language in Sekundarstufe I (tick the box in setup step 2) must it count: its two Q2 courses (§ 28 (4)), or all four if it is your only foreign language (§ 28 (5)).
+- **Not required:** Sport, all other courses, and the Projektkurs / Advanced Class. They are counted only if they improve your average.
+- **How many count:** 35 to 40 courses (a Projektkurs etc. counts as two). With 35 to 37 courses at most 7 deficits (4 points or fewer) are allowed, with 38 to 40 at most 8, and never more than 3 in advanced courses. At most 2 Literature courses can count. The calculator tries every legal combination, so it also takes more courses than the minimum when that is the only way to stay within the deficit limit.
+- **Ambiguous subjects:** If more than one subject could be your foreign language, natural science, social science or Schwerpunktfach, all legal assignments are tried and the best one wins. In setup step 2 you can fix them yourself under *Pflichtfächer*.
+- **0 points:** A course with 0 points counts as not taken (§ 6 (7), § 28 (1)). It is never counted and never a deficit. If another subject can fulfil the same requirement, that one is used (for example Physics instead of Biology). If not, the eligibility check shows which requirement fails.
+- **Projection:** Courses without a grade yet are assumed to reach the average of their subject (or your overall average if the subject has no grade yet), so the projection counts 35 to 40 courses from the very first semester instead of only the few graded ones. Missing Abitur exams are assumed at your average in that exam subject.
+
+## How Block II is calculated
+
+Each of the four exam results counts five times (max. 300). With an additional oral exam in subjects 1 to 3, the written part counts double: (2 × written + oral) ÷ 3 × 5, rounded only at the end (table in Anlage 8 VVzAPO-GOSt; e.g. 5 written and 6 oral give 27, not 25). To pass, at least two exam subjects, one of them an LK, need 25 points or more, and Block II needs at least 100.
+
+## Tests
+
+The `tests` folder is not needed on the website. It runs with Node.js (no packages): `node tests/rules.test.js`, `node tests/oracle.test.js` (compares the calculator with a brute-force search over all legal course sets for random students) and `node tests/e2e.js` (browser test, needs Playwright).
 
 ## LuPO import
 
 - In the setup, tap *LuPO-Datei laden* and choose your `.lpo` file. The table of Q1.1 to Q2.2 and the four Abitur subjects are filled in; you can still change everything by hand.
-- EF.1/EF.2 and the Vertiefungskurse (VKE/VKM) are ignored. If your LuPO choice contains a Projektkurs (`PK`), you are asked for its name in step 2; otherwise you pick Advanced Class or Facharbeit yourself, because LuPO does not list them.
-- The file is read **only in your browser** (FileReader, no upload, no server). Only the table with the subjects is read, and from it only subject, course type (Q1.1 to Q2.2) and Abitur subject. Name, e-mail, birth date and the rest of the file are never opened. The page also sets a Content-Security-Policy with `connect-src 'none'`, so it cannot send data anywhere.
+- EF.1/EF.2 and the Vertiefungskurse (VKE/VKM) are ignored. If your LuPO choice contains a Projektkurs (`PK`), you are asked for its name in step 2; otherwise you pick the Advanced Class yourself, because LuPO does not list it.
+- The file is read **only in your browser** (FileReader, no upload, no server). Only the table with the subjects is read, and from it only subject, course type (Q1.1 to Q2.2), Abitur subject and the position in the language sequence (used only to tell whether Spanish from EF is your second foreign language). Name, e-mail, birth date and the rest of the file are never opened. The page also sets a Content-Security-Policy with `connect-src 'none'`, so it cannot send data anywhere.
 - Reading the Access-based `.lpo` format uses [mdb-reader](https://github.com/andipaetzold/mdb-reader) (MIT), bundled as `mdb-reader.js` together with its dependencies; the licenses are in `THIRD-PARTY-LICENSES.txt`.
 
 ## Privacy and backups
@@ -26,12 +46,13 @@ A calculator for your Abitur average grade under the APO-GOSt NRW rules, tailore
 
 ## Tested
 
-The calculation logic was tested against the four sample academic pathways in the NRW Ministry of Education’s information sheet on calculating the overall qualification (as of August 2018). Block I matches in all four cases.
+The calculation logic was tested against the four sample academic pathways in the NRW Ministry of Education’s information sheet on calculating the overall qualification (Block I matches in all four cases; the sample data is in `tests/merkblatt.js`), against a brute-force search for random students, and in the browser.
 
 ## Limitations
 
 - Calculated course grades are provisional only. The grade assigned by the teacher is binding.
-- Social sciences follow § 11 (3) APO-GOSt: one subject must count in full, plus two courses each in history and social sciences (additional courses are optional). The special rule for foreign languages introduced at a later stage is simplified. The limits on the number of courses per subject (including two literature courses) are not checked.
+- The *Advanced Class* is treated like a Projektkurs (one grade, counts as two courses, optional). Its rules are specific to the school and are not in the APO-GOSt; change the weight in `SPW` in `constants.js` if it works differently. Both take place in Q1. Older saved data with a separate *Facharbeit* grade is cleaned up automatically, because the Facharbeit only replaces a Klausur.
+- The per-subject course limits other than the Literature limit (§ 28 (7), (8)) cannot be reached with four semesters and are not checked. Sport has no upper limit (§ 28 (8)). Vertiefungskurse, instrumental/vocal practice courses, the *besondere Lernleistung* and Philosophy as a replacement for Religion are not supported.
 - The calculator is based on the current APO-GOSt rules (Abitur 2028). The revised rules taking effect from the introductory phase in 2027/28 have not been implemented.
 - No guarantee is given. The school and the NRW Ministry of Education and Cultural Affairs are the authoritative sources.
 

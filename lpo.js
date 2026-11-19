@@ -1,6 +1,7 @@
 // LuPO-Import (Datei .lpo = Access-Datenbank). Alles läuft lokal im Browser:
 // Die Datei wird per FileReader gelesen und nie hochgeladen. Gelesen wird nur die Tabelle
-// ABP_SchuelerFaecher, und daraus nur Fach, Kursarten Q1.1–Q2.2 und Abiturfach.
+// ABP_SchuelerFaecher, und daraus nur Fach, Kursarten Q1.1–Q2.2, Abiturfach und die Stelle in der Sprachenfolge
+// (nur für Spanisch ab EF: war es die zweite Fremdsprache, gilt § 28 Abs. 4/5).
 // Namen, E-Mail, Geburtsdatum usw. (Tabelle ABP_Schueler) werden gar nicht geöffnet.
 
 // LuPO-Fachkürzel → Fach-ID des Abi-Rechners.
@@ -50,19 +51,29 @@ function lupoLoad() {
     }));
 }
 
-// ArrayBuffer der .lpo-Datei → { cells, af, pk }
+// ArrayBuffer der .lpo-Datei → { cells, af, pk, nz2 }
 function lupoParse(buf) {
   const rd = window.MDBOpen(buf),
-    all = rd.getTable('ABP_SchuelerFaecher').getData({
-      columns: ['Schueler_ID', 'FachKrz', 'AbiturFach', ...LPQ.map((q) => 'Kursart_' + q)],
+    tb = rd.getTable('ABP_SchuelerFaecher'),
+    all = tb.getData({
+      columns: [
+        'Schueler_ID',
+        'FachKrz',
+        'AbiturFach',
+        ...(tb.getColumnNames().includes('Sprachenfolge') ? ['Sprachenfolge'] : []),
+        ...LPQ.map((q) => 'Kursart_' + q),
+      ],
     }),
     sid = all.length ? all[0].Schueler_ID : null,
     rows = all.filter((r) => r.Schueler_ID === sid), // eine Datei = ein Schüler
     cells = {},
     af = {};
-  let pk = false;
+  let pk = false,
+    nz2 = null; // Spanisch ab EF als zweite Fremdsprache (§ 28 Abs. 4/5)? null = Sprachenfolge unbekannt
   for (const r of rows) {
     const k = String(r.FachKrz || '').trim().toUpperCase(),
+      sf = parseInt(r.Sprachenfolge, 10);
+    if (k == 'S0' && sf > 0) nz2 = sf == 2;
       q = LPQ.map((x) => LPK[String(r['Kursart_' + x] || '').trim().toUpperCase()] || '');
     if (k == 'PK') {
       if (q.some(Boolean)) pk = true;
@@ -80,7 +91,7 @@ function lupoParse(buf) {
     if (a >= 1 && a <= 4 && cells[id]) af[id] = a;
   }
   if (!Object.keys(cells).length) throw new Error('keine Q-Phase');
-  return { cells, af, pk };
+  return { cells, af, pk, nz2: cells.es ? nz2 : false };
 }
 
 async function lupoImport(buf) {
@@ -99,8 +110,10 @@ async function lupoImport(buf) {
   W = JSON.parse(JSON.stringify(st || fresh()));
   W.cells = res.cells;
   W.af = res.af;
+  if (res.nz2 !== null) W.nz2 = res.nz2;
   // Projektkurs: nur "PK" steht in LuPO, der Name wird im Wizard abgefragt.
-  // Ohne PK ist es eine Advanced Class oder Facharbeit (steht nicht in LuPO) – die wählt der Schüler selbst.
+  // Ohne PK ist es eine Advanced Class (steht nicht in LuPO) – die wählt der Schüler selbst – oder eine Facharbeit,
+  // die nur eine Klausur ersetzt.
   if (res.pk) W.sp = { pk: { name: (W.sp.pk && W.sp.pk.name) || '' } };
   else if (W.sp.pk) W.sp = {};
   impInfo = {
