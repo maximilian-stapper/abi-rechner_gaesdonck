@@ -55,7 +55,7 @@ function pick(p) {
   }
 }
 const mrow = (r) =>
-    `<div class=ir>${sv(r.n)}<input type=number inputmode=decimal step=any min=0 placeholder=Gewicht value="${r.w || ''}"></div>`,
+    `<div class=ir>${sv(r.n)}<input type=number inputmode=decimal step=any min=0 placeholder=Gewicht value="${r.w === '' || r.w == null ? '' : r.w}"></div>`,
   srow = (v) => `<div class=ir>${sv(v)}</div>`;
 function edit(k) {
   const c = courses().find((x) => x.k == k),

@@ -2,7 +2,7 @@
 
 A calculator for your Abitur average grade under the APO-GOSt NRW rules, tailored to the subjects offered at Collegium Augustinianum Gaesdonck. The site runs entirely in your browser, including on mobile.
 
-**Live:** https://Maximilian-Stapper.github.io/abi-rechner/
+**Live:** https://Maximilian-Stapper.github.io/abi-rechner_gaesdonck/
 
 ## How to use
 
@@ -58,4 +58,4 @@ The calculation logic was tested against the four sample academic pathways in th
 
 ## Publishing (GitHub Pages)
 
-Upload the `index.html` file to a repository. Under *Settings → Pages*, select the `main` branch and the `/ (root)` folder.
+Upload the whole project (`index.html` plus all `.js` and `.css` files, the icon and `mdb-reader.js`) to a repository. Under *Settings → Pages*, select the `main` branch and the `/ (root)` folder.

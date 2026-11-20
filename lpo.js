@@ -72,9 +72,9 @@ function lupoParse(buf) {
     nz2 = null; // Spanisch ab EF als zweite Fremdsprache (§ 28 Abs. 4/5)? null = Sprachenfolge unbekannt
   for (const r of rows) {
     const k = String(r.FachKrz || '').trim().toUpperCase(),
-      sf = parseInt(r.Sprachenfolge, 10);
-    if (k == 'S0' && sf > 0) nz2 = sf == 2;
+      sf = parseInt(r.Sprachenfolge, 10),
       q = LPQ.map((x) => LPK[String(r['Kursart_' + x] || '').trim().toUpperCase()] || '');
+    if (k == 'S0' && sf > 0) nz2 = sf == 2;
     if (k == 'PK') {
       if (q.some(Boolean)) pk = true;
       continue;

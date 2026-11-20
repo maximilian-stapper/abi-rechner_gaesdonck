@@ -21,10 +21,17 @@ function pts(c) {
   if (g.f !== undefined && g.f !== null && g.f !== '')
     return { p: +g.f, fin: 1 };
   const m = (g.m || []).filter((r) => num(r.n) != null),
+    // Gewicht: leer = 1, 0 bleibt 0 (Note wird dann nicht berücksichtigt)
+    wt = (r) => {
+      const w = r.w === '' || r.w == null ? 1 : +r.w;
+      return isFinite(w) && w >= 0 ? w : 1;
+    },
+    sw = m.reduce((a, r) => a + wt(r), 0),
     s = (g.s || []).filter((v) => num(v) != null);
   const o = m.length
-      ? m.reduce((a, r) => a + r.n * (r.w || 1), 0) /
-        m.reduce((a, r) => a + (r.w || 1), 0)
+      ? sw > 0
+        ? m.reduce((a, r) => a + r.n * wt(r), 0) / sw
+        : m.reduce((a, r) => a + +r.n, 0) / m.length
       : null,
     w = s.length ? s.reduce((a, v) => a + +v, 0) / s.length : null;
   const p =
@@ -197,11 +204,13 @@ function solve() {
     let nli = forced.filter((c) => c.id == 'li').length;
     const ord = pool.filter((c) => c.id != 'li' || nli++ < RULE.li); // Literatur-Obergrenze
     let best = null,
-      any = null;
+      any = null,
+      anyIn = null; // beste Auswahl mit zulässiger Kurszahl, Defizite ungeprüft
     const upd = (P, N, cnt, d, ld, k, mask) => {
       if (!N) return;
       const r = { P, N, cnt, d, ld, k, mask };
       if (better(P, N, cnt, any)) any = r;
+      if (cnt >= RULE.min && cnt <= RULE.max && better(P, N, cnt, anyIn)) anyIn = r;
       if (cnt >= RULE.min && cnt <= RULE.max && d <= lim(cnt) && ld <= RULE.defLK && better(P, N, cnt, best))
         best = r;
     };
@@ -230,7 +239,7 @@ function solve() {
         upd(P, N, cnt, d, ld, k + 1, mask);
       });
     }
-    return { best, any, ord };
+    return { best, any: anyIn || any, ord };
   };
 
   // --- Alle Zuordnungen durchprobieren, die beste gewinnt -------------------
