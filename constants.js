@@ -9,7 +9,7 @@ const S = [
   ['ku', 'Kunst'],
   ['mu', 'Musik'],
   ['li', 'Literatur'],
-  ['ek', 'Erdkunde', 'Sozialwissenschaften'],
+  ['ek', 'Erdkunde', 'Gesellschaftswissenschaften'],
   ['ge', 'Geschichte'],
   ['sw', 'Sozialwissenschaften'],
   ['re', 'Kath. Religionslehre'],
