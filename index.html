@@ -10,12 +10,13 @@
     <meta name="theme-color" content="#18181b" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src https://untis-worker.maximilian-stapper.workers.dev/ ; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
     <meta name="color-scheme" content="dark" />
     <title>Abi-Rechner Gaesdonck</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="chart.css" />
+    <link rel="stylesheet" href="untis.css" />
     <meta name="apple-mobile-web-app-title" content="Abi-Rechner" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="apple-touch-icon.png" />
@@ -215,11 +216,14 @@
     <dialog id="dlg"></dialog>
     <input type="file" id="fi" accept=".json,application/json" hidden />
     <input type="file" id="lf" hidden />
+    <input type="file" id="uf" accept=".ics,text/calendar" hidden />
 
     <script src="constants.js"></script>
     <script src="state.js"></script>
+    <script src="untis.js"></script>
     <script src="calculation.js"></script>
     <script src="chart.js"></script>
+    <script src="untis-ui.js"></script>
     <script src="views.js"></script>
     <script src="dialogs.js"></script>
     <script src="lpo.js"></script>

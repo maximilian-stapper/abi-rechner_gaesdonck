@@ -28,14 +28,28 @@ Each of the four exam results counts five times (max. 300). With an additional o
 
 ## Tests
 
-The `tests` folder is not needed on the website. It runs with Node.js (no packages): `node tests/rules.test.js`, `node tests/oracle.test.js` (compares the calculator with a brute-force search over all legal course sets for random students) and `node tests/e2e.js` (browser test, needs Playwright).
+The `tests` folder is not needed on the website. It runs with Node.js (no packages): `node tests/rules.test.js`, `node tests/oracle.test.js` (compares the calculator with a brute-force search over all legal course sets for random students) and `node tests/e2e.js` (browser test, needs Playwright). `node tests/untis-worker.test.mjs` checks the Untis worker (CORS, allowed origin, forwarding, cookies) together with `untis.js` using a stand-in for WebUntis, without a network.
 
 ## LuPO import
 
 - In the setup, tap *LuPO-Datei laden* and choose your `.lpo` file. The table of Q1.1 to Q2.2 and the four Abitur subjects are filled in; you can still change everything by hand.
 - EF.1/EF.2 and the Vertiefungskurse (VKE/VKM) are ignored. If your LuPO choice contains a Projektkurs (`PK`), you are asked for its name in step 2; otherwise you pick the Advanced Class yourself, because LuPO does not list it.
-- The file is read **only in your browser** (FileReader, no upload, no server). Only the table with the subjects is read, and from it only subject, course type (Q1.1 to Q2.2), Abitur subject and the position in the language sequence (used only to tell whether Spanish from EF is your second foreign language). Name, e-mail, birth date and the rest of the file are never opened. The page also sets a Content-Security-Policy with `connect-src 'none'`, so it cannot send data anywhere.
+- The file is read **only in your browser** (FileReader, no upload, no server). Only the table with the subjects is read, and from it only subject, course type (Q1.1 to Q2.2), Abitur subject and the position in the language sequence (used only to tell whether Spanish from EF is your second foreign language). Name, e-mail, birth date and the rest of the file are never opened. The page also sets a Content-Security-Policy with `connect-src 'none'`, so it cannot send data anywhere (unless you switch on the optional Untis live sync, see below).
 - Reading the Access-based `.lpo` format uses [mdb-reader](https://github.com/andipaetzold/mdb-reader) (MIT), bundled as `mdb-reader.js` together with its dependencies; the licenses are in `THIRD-PARTY-LICENSES.txt`.
+
+## Untis planner (optional)
+
+The **Untis** button next to *Abi-Rechner* at the top opens a timetable and homework planner. It is independent of the calculator.
+
+- **Week view:** every subject has its own color. The frame runs from **07:55 to 18:30** only; lessons are cut off at these limits and lessons completely outside are not shown (a note says how many). Double lessons are merged, cancelled lessons are dashed, changed lessons and exams get a dot, and a small number shows open homework. Tap a lesson to see time, room and teacher plus the homework of that subject.
+- **Homework:** colored subject chips and a list sorted by due date (overdue in red). Tap the circle to mark a task as done, tap a subject to see all its tasks, and add your own with *+ Hausaufgabe*.
+- **Setup** (*Einrichten* in the planner): WebUntis address, school, user name, worker address, number of weeks, assigning Untis subject names the calculator does not recognize, and deleting the data.
+- **Two ways to get the data:**
+  1. **ICS file** (timetable only, no homework): works right away and needs no change to the security policy. The file is read only in the browser.
+  2. **Live sync** (timetable and homework) through a small Cloudflare Worker, `worker/untis-worker.js`. WebUntis does not allow calls from other websites, so the worker only forwards them.
+- **The worker does not run on GitHub Pages.** GitHub Pages only serves the static site. The worker lives at Cloudflare, and the browser calls it from your Pages site. For that, `OK_ORIGINS` in the worker must contain the address of your site without a path (`https://maximilian-stapper.github.io`), and `index.html` must allow the worker: change `connect-src 'none'` in the Content-Security-Policy tag to `connect-src https://YOUR-WORKER.workers.dev`. Until you do that, the page still cannot send data anywhere. *Proxy prüfen* in the setup tests the connection and the allowed origin (route `/ping`), and the app says exactly what is missing.
+- **Privacy:** the password is never stored; it is only held in memory during login and goes through your own worker to Untis. Use only your own worker and do not share its address. Timetable and homework stay in this browser and are part of the backup file (without user name and password).
+- Text from Untis (subjects, teachers, rooms, homework) is always escaped before it is shown.
 
 ## Privacy and backups
 
@@ -58,4 +72,4 @@ The calculation logic was tested against the four sample academic pathways in th
 
 ## Publishing (GitHub Pages)
 
-Upload the whole project (`index.html` plus all `.js` and `.css` files, the icon and `mdb-reader.js`) to a repository. Under *Settings → Pages*, select the `main` branch and the `/ (root)` folder.
+Upload the whole project (`index.html` plus all `.js` and `.css` files, the icon, `mdb-reader.js` and the `worker` folder) to a repository. Under *Settings → Pages*, select the `main` branch and the `/ (root)` folder.

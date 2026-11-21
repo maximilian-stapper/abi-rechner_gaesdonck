@@ -47,7 +47,7 @@ document.addEventListener('click', (e) => {
     wiz();
   } else if (a == 'ex') {
     const u = URL.createObjectURL(
-        new Blob([JSON.stringify(st)], { type: 'application/json' }),
+        new Blob([JSON.stringify({ ...st, untis: Untis.backup() })], { type: 'application/json' }),
       ),
       l = document.createElement('a');
     l.href = u;
@@ -58,12 +58,14 @@ document.addEventListener('click', (e) => {
   else if (a == 'lp') $('#lf').click();
   else if (
     a == 'rs' &&
-    confirm('Wirklich alle Fächer und Noten auf diesem Gerät löschen?')
+    confirm('Wirklich alle Fächer, Noten und Untis-Daten auf diesem Gerät löschen?')
   ) {
     try {
       localStorage.removeItem(K);
     } catch (x) {}
+    Untis.reset();
     st = null;
+    tab = 'ov';
     W = null;
     step = 1;
     $('#dlg').close();
@@ -93,7 +95,10 @@ document.addEventListener('change', (e) => {
       try {
         const s = JSON.parse(r.result);
         if (!s.cells || !s.g) throw 0;
+        const u = s.untis; // Untis-Daten gehören nicht in st; ältere Sicherungen haben sie nicht und lassen die vorhandenen unberührt
+        delete s.untis;
         st = migrate(s);
+        if (u) Untis.restore(u);
         W = null;
         step = 1;
         save();

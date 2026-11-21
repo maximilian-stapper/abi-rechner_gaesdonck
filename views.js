@@ -1,12 +1,18 @@
 function render() {
   if (!st) return wiz();
+  const top = `<div class=top>${UntisUI.head(tab)}<button class=bt data-a=menu aria-label=Menü>⋯</button></div>`;
+  if (tab == 'un') {
+    // Untis-Planer (untis-ui.js)
+    $('#app').innerHTML = top + UntisUI.view();
+    return;
+  }
   const tabs = [
     ['ov', 'Übersicht'],
     ...SEM.map((s, i) => [i, s]),
     ['ab', 'Abitur'],
   ];
   $('#app').innerHTML =
-    `<div class=top><h1>Abi-Rechner</h1><button class=bt data-a=menu aria-label=Menü>⋯</button></div><nav class=tabs>${tabs.map(([k, l]) => `<button data-t="${k}" class="${k == tab ? 'on' : ''}">${l}</button>`).join('')}</nav>` +
+    top + `<nav class=tabs>${tabs.map(([k, l]) => `<button data-t="${k}" class="${k == tab ? 'on' : ''}">${l}</button>`).join('')}</nav>` +
     (tab == 'ov' ? ov() : tab == 'ab' ? ab() : qtab(+tab));
 }
 function ov() {
