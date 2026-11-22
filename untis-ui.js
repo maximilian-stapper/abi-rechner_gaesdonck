@@ -19,12 +19,7 @@ const UntisUI = (() => {
     TO = '18:30',
     PX = 0.9; // Pixel pro Minute
 
-  // Feste Werte für Gaesdonck: müssen nicht eingetragen werden (stehen nur unter „Erweitert“)
-  const DEFAULTS = {
-    server: 'gaesdonck.webuntis.com',
-    school: 'gaesdonck',
-    proxy: 'https://untis-worker.maximilian-stapper.workers.dev',
-  };
+  // Server (gaesdonck.webuntis.com), Schule und Worker stehen fest in untis.js (FIX) und müssen nie eingetragen werden.
 
   // ---------- Hilfen ----------
   const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
@@ -95,7 +90,8 @@ const UntisUI = (() => {
 
   // ---------- Eigene Einstellungen (getrennt von den Untis-Daten, nie in der Sicherungsdatei) ----------
   const SK = (typeof K !== 'undefined' ? K : 'abirechner') + '.untis.ui', // { ical, mUser }
-    SS = SK + '.key'; // Untis-Mobile-Schlüssel: nur auf diesem Gerät
+    SS = SK + '.key', // Untis-Mobile-Schlüssel: nur auf diesem Gerät
+    SP = SK + '.pw'; // Microsoft-Passwort: nur, wenn „Passwort merken“ angehakt ist, nur auf diesem Gerät
   const ux = () => {
       try {
         return Object.assign({ ical: '', mUser: '' }, JSON.parse(localStorage.getItem(SK)) || {});
@@ -123,18 +119,27 @@ const UntisUI = (() => {
         else localStorage.removeItem(SS);
       } catch (e) {}
     };
+  const pwGet = () => {
+      try {
+        return localStorage.getItem(SP) || '';
+      } catch (e) {
+        return '';
+      }
+    },
+    pwSet = (v) => {
+      try {
+        if (v) localStorage.setItem(SP, v);
+        else localStorage.removeItem(SP);
+      } catch (e) {}
+    };
   function wipe() {
     try {
       localStorage.removeItem(SK);
       localStorage.removeItem(SS);
+      localStorage.removeItem(SP);
     } catch (e) {}
   }
-  function defaults() {
-    const c = U.configure(),
-      p = {};
-    for (const k of Object.keys(DEFAULTS)) if (!c[k]) p[k] = DEFAULTS[k];
-    if (Object.keys(p).length) U.configure(p);
-  }
+  function defaults() {} // feste Adressen setzt untis.js selbst (bleibt für events.js erhalten)
   U.setResolver(US.resolve);
   defaults();
 
@@ -147,7 +152,7 @@ const UntisUI = (() => {
   let view = 'plan', // 'plan' | 'setup'
     wk = homeWeek(),
     hwAll = false,
-    pw = '', // Passwort nur im Speicher, nie gespeichert
+    pw = '', // eingetipptes Passwort (nur im Speicher; gespeichert nur mit „Passwort merken“)
     msg = null, // { c: 'ok'|'warn'|'err', t }
     lastTab = 'ov',
     uiBusy = false,
@@ -356,7 +361,7 @@ const UntisUI = (() => {
       c = U.configure();
     cur = null;
     d.className = 'un';
-    d.innerHTML = `<h3>Bei Untis anmelden</h3><div class=dbody><p class=d>Untis-Passwort für <b>${esc(c.user)}</b>. Es wird nicht gespeichert und nur für diese Anmeldung gebraucht.</p><input type=password id=up autocomplete=current-password placeholder="Passwort"></div><div class=bar><button type=button class=bt data-u=x>Abbrechen</button><button type=button class="bt pr" data-u=pwgo>Abgleichen</button></div>`;
+    d.innerHTML = `<h3>Mit Microsoft anmelden</h3><div class=dbody><p class=d>Untis hat dich abgemeldet. Microsoft-Passwort für <b>${esc(c.email)}</b>:</p><input type=password id=up autocomplete=current-password placeholder="Microsoft-Passwort"><label class=ir style="margin-top:10px;align-items:flex-start"><input type=checkbox id=up-rem style="width:auto;margin-top:3px"><span class=d>Passwort auf diesem Gerät merken</span></label></div><div class=bar><button type=button class=bt data-u=x>Abbrechen</button><button type=button class="bt pr" data-u=pwgo>Anmelden</button></div>`;
     if (!d.open) d.showModal();
     $('#up').focus();
   }
@@ -388,15 +393,13 @@ const UntisUI = (() => {
       });
   }
   const proxyUrl = (v) => String(v || '').trim().replace(/\/+$/, '');
-  const cspHint = (p) => `Die Seite darf diese Adresse nicht aufrufen (Content-Security-Policy). Ändere in index.html bei connect-src auf: connect-src ${p}`;
+  const cspHint = (p) => `Die Seite darf den Worker nicht aufrufen (Content-Security-Policy). In index.html muss bei connect-src stehen: ${p}`;
   const nerr = (code, m) => Object.assign(new Error(m), { code });
 
   // Erreichbarkeit und erlaubte Herkunft des Workers prüfen (Route /ping des Workers)
   async function pcheck(raw) {
     const base = proxyUrl(raw),
       o = location.origin;
-    if (!base) return ['err', 'Trag zuerst die Worker-Adresse ein.'];
-    if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(base)) return ['err', 'Die Adresse muss mit https:// beginnen und darf keinen Pfad haben, zum Beispiel https://untis.meinname.workers.dev'];
     if (o === 'null' || location.protocol === 'file:') return ['err', 'Die Seite läuft als lokale Datei. Der Worker lässt nur Aufrufe von der GitHub-Pages-Adresse zu (oder von localhost, wenn du es in OK_ORIGINS einträgst).'];
     if (!cspAllows(base)) return ['err', cspHint(base)];
     let r;
@@ -453,30 +456,32 @@ const UntisUI = (() => {
 
   function paintBusy() {
     const b = uiBusy || U.status().busy;
-    document.querySelectorAll('[data-u=sync],[data-u=dosync],[data-u=pwsync]').forEach((x) => {
+    document.querySelectorAll('[data-u=sync],[data-u=dosync],[data-u=login]').forEach((x) => {
       x.disabled = b;
       if (b) x.dataset.busy = '1';
       else delete x.dataset.busy;
     });
   }
-  const msOk = () => {
+  // Andere Wege: Kalender-Link (Stundenplan) und/oder Untis-Mobile-Schlüssel (Hausaufgaben)
+  const altOk = () => {
     const x = ux();
     return !!(x.ical || (x.mUser && keyGet()));
   };
-  // Zwei Wege:  Microsoft-Konto: Kalender-Link (Stundenplan) + Untis-Mobile-Schlüssel (Hausaufgaben), kein Passwort.
-  //             o.pw / o.pass: Anmeldung mit Untis-Passwort (nur für Konten ohne Microsoft-Anmeldung).
+  const msOn = () => !!U.configure().email;
+  // Hauptweg: Microsoft-Anmeldung über den Worker. Das Passwort wird nur gebraucht, wenn Untis keine Sitzung mehr hat.
+  // Klappt das nicht (oder ist keine E-Mail eingetragen), laufen die anderen Wege, sofern eingerichtet.
   async function doSync(o) {
     o = o || {};
     if (uiBusy || U.status().busy) return;
     const c = U.configure(),
       x = ux(),
-      byPw = !!(o.pw || o.pass != null),
       good = [],
       bad = [];
-    let again = false;
+    let ask = false;
     msg = null;
-    if (!byPw && !msOk()) {
-      msg = { c: 'warn', t: 'Trag zuerst den Kalender-Link und/oder den Untis-Mobile-Schlüssel ein.' };
+    if (!msOn() && !altOk()) {
+      view = 'setup';
+      msg = { c: 'warn', t: 'Trag zuerst deine Microsoft-E-Mail ein.' };
       return redraw();
     }
     if (!cspAllows(proxyUrl(c.proxy))) {
@@ -490,22 +495,27 @@ const UntisUI = (() => {
         const r = await f();
         good.push(name + ': ' + r.t);
         if (r.w) bad.push(name + ': ' + r.w);
+        return true;
       } catch (e) {
-        bad.push(name + ': ' + ((e && e.message) || 'Fehler'));
-        if (e && e.code === 'NEED_LOGIN' && byPw) again = true;
-        if (e && e.code === 'AUTH') pw = '';
+        if (e && e.code === 'NEED_LOGIN' && !o.pass) ask = true;
+        else bad.push(name + ': ' + ((e && e.message) || 'Fehler'));
+        if (e && e.code === 'AUTH') pwSet(''); // falsches gespeichertes Passwort nicht weiter benutzen
+        return false;
       }
     };
-    if (byPw) {
-      await run('Untis', async () => {
-        const r = await U.sync({ pass: o.pass });
+    let ok = false;
+    if (msOn()) {
+      ok = await run('Untis', async () => {
+        const r = await U.sync({ provider: 'ms', pass: o.pass || pwGet() || undefined });
+        if (o.pass && o.rem) pwSet(o.pass);
         pw = '';
         return { t: `${r.lessons} Stunden, ${r.homework} Hausaufgaben`, w: r.warn.join(' ') };
       });
-    } else {
-      if (x.ical) await run('Stundenplan', async () => ({ t: (await syncIcal(x.ical)) + ' Stunden' }));
+    }
+    if (!ok && !ask) {
+      if (x.ical) await run('Stundenplan (Kalender-Link)', async () => ({ t: (await syncIcal(x.ical)) + ' Stunden' }));
       if (x.mUser && keyGet()) {
-        await run('Hausaufgaben', async () => {
+        await run('Hausaufgaben (Untis Mobile)', async () => {
           const r = await syncHomework();
           return { t: String(r.homework.filter(vis).length), w: r.warn.join(' ') }; // ohne Überfälliges, wie in der Anzeige
         });
@@ -513,7 +523,7 @@ const UntisUI = (() => {
     }
     uiBusy = false;
     paintBusy();
-    if (again) {
+    if (ask && !good.length) {
       msg = null;
       return askPass();
     }
@@ -521,10 +531,9 @@ const UntisUI = (() => {
     redraw();
   }
   function quick() {
-    if (msOk()) return doSync();
-    if (U.configure().user) return U.status().connected ? doSync({ pw: true }) : askPass();
+    if (msOn() || altOk()) return doSync();
     view = 'setup';
-    msg = { c: 'warn', t: 'Richte zuerst den Kalender-Link oder den Untis-Mobile-Schlüssel ein.' };
+    msg = { c: 'warn', t: 'Trag zuerst deine Microsoft-E-Mail und dein Passwort ein.' };
     redraw();
   }
   const redraw = () => {
@@ -549,48 +558,36 @@ const UntisUI = (() => {
       s = U.status(),
       x = ux(),
       hasKey = !!keyGet(),
+      rem = !!pwGet(),
       um = U.unmapped(),
       names = [...new Set([...um, ...Object.keys(c.subjectMap)])].sort((a, b) => a.localeCompare(b, 'de')),
-      o = location.origin,
-      gh = /\.github\.io$/i.test(location.hostname),
-      p = proxyUrl(c.proxy),
-      pOk = !p || cspAllows(p),
       busy = uiBusy || s.busy,
       ic = x.ical ? icalCheck(x.ical) : null,
       m = msg ? `<div class="un-msg ${msg.c}" role=status id=us-msg><span>${esc(msg.t)}</span></div>` : '<div id=us-msg></div>',
       groups = [...new Set(US.choices().map((q) => q[2]))],
       selOpts = (cu) => `<option value="">nicht zugeordnet</option>${groups.map((g) => `<optgroup label="${esc(g)}">${US.choices().filter((q) => q[2] === g).map(([id, n]) => `<option value="${esc(id)}"${cu === id ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}`;
     return `<div class=g><div class=un-nav><button type=button class=bt data-u=plan>‹ Plan</button><div class=wk><b>Untis einrichten</b></div></div>${m}</div>
-<div class=g><h2>Verbindung</h2><p class=d>Untis von Gaesdonck (${esc(c.server || DEFAULTS.server)}). Server, Schule und Worker sind schon eingetragen.</p>
-<div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=ptest>Verbindung prüfen</button></div>
-<small id=us-csp class="d bad" style="display:block;margin-top:4px">${pOk ? '' : esc(cspHint(p))}</small>
-<details><summary>Erweitert (Server, Schule, Worker)</summary>
-<h4>Untis-Server</h4><input id=us-srv data-uf=server value="${esc(c.server)}" autocomplete=off autocapitalize=off>
-<h4>Schulname</h4><input id=us-sch data-uf=school value="${esc(c.school)}" autocomplete=off autocapitalize=off>
-<h4>Worker-Adresse</h4><input type=url id=us-px data-uf=proxy value="${esc(c.proxy)}" autocomplete=off autocapitalize=off>
-<small class=d>Diese Seite: ${esc(o)}${gh ? ' (GitHub Pages)' : ''}. Genau diese Adresse (ohne Pfad) steht im Worker bei OK_ORIGINS. Der Worker läuft bei Cloudflare, nicht auf GitHub Pages.</small>
-<h4>Wochen im Voraus (nur Anmeldung mit Passwort)</h4><select data-uf=weeks>${[1, 2, 3, 4, 6, 8].map((n) => `<option value="${n}"${c.weeks == n ? ' selected' : ''}>${n}</option>`).join('')}</select>
-</details></div>
-<div class=g><h2>Stundenplan</h2><p class=d>Mit deinem Microsoft-Konto brauchst du kein Passwort: Veröffentliche deinen Kalender in Untis und füge den Link hier ein.</p>
-<ol class=un-steps><li>Untis im Browser öffnen und mit Microsoft anmelden.</li><li><i>Profil → Freigaben → Kalender publizieren</i>, den Link kopieren.</li><li>Hier einfügen.</li></ol>
-<input type=url id=us-ical data-uf=ical placeholder="https://gaesdonck.webuntis.com/WebUntis/…" value="${esc(x.ical)}" autocomplete=off autocapitalize=off>
-<small id=us-ical-info class="d${ic && ic.err ? ' bad' : ''}">${ic ? (ic.err ? esc(ic.err) : 'Link erkannt.') : 'Der Link ist wie ein Passwort für deinen Stundenplan: nicht weitergeben.'}</small></div>
-<div class=g><h2>Hausaufgaben</h2><p class=d>Dafür nutzt die App den Schlüssel der Untis-Mobile-App. Er funktioniert auch mit Microsoft-Anmeldung.</p>
-<ol class=un-steps><li>Untis im Browser öffnen.</li><li><i>Profil → Freigaben → Zugriff über Untis Mobile → QR-Code anzeigen</i>.</li><li>Die Felder <i>Benutzer</i> und <i>Schlüssel</i> hier eintragen.</li></ol>
-<h4>Benutzer</h4><input id=us-mu data-uf=muser value="${esc(x.mUser)}" autocomplete=off autocapitalize=off>
-<h4>Schlüssel</h4><input type=password id=us-mk data-uf=mkey placeholder="${hasKey ? 'gespeichert, zum Ersetzen neu eingeben' : 'Schlüssel aus dem QR-Dialog'}" autocomplete=off autocapitalize=off>
-<small id=us-mk-info class=d>${hasKey ? 'Schlüssel ist auf diesem Gerät gespeichert. ' : ''}Er bleibt nur auf diesem Gerät (nicht in der Sicherungsdatei) und gibt Zugriff auf deine Untis-Daten: nicht weitergeben.</small>
-<div class=bar style="justify-content:flex-start;flex-wrap:wrap"><button type=button class=bt data-u=mtest>Schlüssel testen</button>${hasKey ? '<button type=button class=bt data-u=mkeyrm>Schlüssel entfernen</button>' : ''}</div></div>
-<div class=g><div class=bar style="justify-content:flex-start"><button type=button class="bt pr" data-u=dosync${busy ? ' data-busy=1 disabled' : ''}>Jetzt abgleichen</button></div>
-<details><summary>Andere Wege</summary>
-<h4>ICS-Datei</h4><p class=d>Nur Stundenplan, einmalig. Die Datei wird nur in deinem Browser gelesen.</p><div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=ics>ICS-Datei wählen</button></div>
-<h4>Mit Untis-Passwort (nur ohne Microsoft-Anmeldung)</h4>
-<input id=us-usr data-uf=user placeholder="Untis-Benutzername" value="${esc(c.user)}" autocomplete=username autocapitalize=off>
-<input type=password id=us-pw data-uf=pw placeholder="Passwort (wird nicht gespeichert)" value="${esc(pw)}" autocomplete=current-password style="margin-top:8px">
-<div class=bar style="justify-content:flex-start;flex-wrap:wrap"><button type=button class=bt data-u=pwsync${busy ? ' data-busy=1 disabled' : ''}>Mit Passwort abgleichen</button>${s.connected ? '<button type=button class=bt data-u=logout>Abmelden</button>' : ''}</div>
-</details></div>
+<div class=g><h2>Mit Microsoft anmelden</h2><p class=d>Gib deine Schul-E-Mail und dein Microsoft-Passwort ein, so wie beim Knopf <i>Office 365</i> auf der Untis-Seite. Mehr ist nicht nötig: Untis von Gaesdonck ist schon eingestellt.</p>
+<h4>E-Mail</h4><input type=email id=us-em data-uf=email value="${esc(c.email)}" placeholder="vorname.nachname@…" autocomplete=username autocapitalize=off spellcheck=false>
+<h4>Passwort</h4><input type=password id=us-pw data-uf=pw value="${esc(pw)}" placeholder="${rem ? 'gespeichert' : 'Microsoft-Passwort'}" autocomplete=current-password>
+<label class=ir style="margin-top:10px;align-items:flex-start"><input type=checkbox id=us-rem ${rem ? 'checked' : ''} style="width:auto;margin-top:3px"><span class=d>Passwort auf diesem Gerät merken. Dann gleicht die App ohne Nachfrage ab. Sonst fragt sie nur, wenn Untis dich abgemeldet hat.</span></label>
+<div class=bar style="justify-content:flex-start;flex-wrap:wrap"><button type=button class="bt pr" data-u=login${busy ? ' data-busy=1 disabled' : ''}>Anmelden und abgleichen</button>${s.connected || rem ? '<button type=button class=bt data-u=logout>Abmelden</button>' : ''}</div>
+<small class=d>${s.connected ? 'Angemeldet' + (s.who ? ' als ' + esc(s.who) : '') + '. ' : ''}Das Passwort geht nur über den Worker der App an Microsoft und landet nie in der Sicherungsdatei.</small></div>
 <div class=g><h2>Fächer zuordnen</h2><p class=d>Die App erkennt Kürzel wie <i>D G1</i>, <i>E5 L1</i> oder <i>PKKU</i> selbst: Grundkurse eines Fachs gehören zusammen, Leistungskurse sind eigene Gruppen. ${names.length ? 'Nicht erkannte Namen kannst du hier von Hand zuordnen.' : 'Im Moment ist alles erkannt.'}</p>${names.map((n) => `<div class=ir><span class=un-map>${esc(n)}</span><select data-uf=map data-n="${esc(n)}" aria-label="Fach für ${esc(n)}">${selOpts(own(c.subjectMap, n) ? c.subjectMap[n] : '')}</select></div>`).join('')}</div>
-<div class=g><h2>Daten</h2><p class=d>${s.lessons} Stunden und ${hws().length} Hausaufgaben gespeichert${s.lastSync ? ', Stand ' + stamp(s.lastSync) : ''}. Sie sind Teil der Sicherungsdatei im Menü (ohne Zugangsdaten).</p><div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=rmdata style="color:var(--no)">Alle Untis-Daten löschen</button></div></div>`;
+<div class=g><h2>Daten</h2><p class=d>${s.lessons} Stunden und ${hws().length} Hausaufgaben gespeichert${s.lastSync ? ', Stand ' + stamp(s.lastSync) : ''}. Sie sind Teil der Sicherungsdatei im Menü (ohne Zugangsdaten).</p><div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=rmdata style="color:var(--no)">Alle Untis-Daten löschen</button></div></div>
+<div class=g><details><summary>Andere Wege (falls die Anmeldung nicht klappt)</summary>
+<p class=d>Zum Beispiel, wenn dein Konto eine zweite Bestätigung (MFA) verlangt. Diese Wege laufen nur, wenn die Microsoft-Anmeldung nicht klappt oder keine E-Mail eingetragen ist.</p>
+<h4>Stundenplan: Kalender-Link</h4><p class=d>In Untis <i>Profil → Freigaben → Kalender publizieren</i>, den Link kopieren und hier einfügen.</p>
+<input type=url id=us-ical data-uf=ical placeholder="https://gaesdonck.webuntis.com/WebUntis/…" value="${esc(x.ical)}" autocomplete=off autocapitalize=off>
+<small id=us-ical-info class="d${ic && ic.err ? ' bad' : ''}">${ic ? (ic.err ? esc(ic.err) : 'Link erkannt.') : 'Der Link ist wie ein Passwort für deinen Stundenplan: nicht weitergeben.'}</small>
+<h4>Hausaufgaben: Untis-Mobile-Schlüssel</h4><p class=d>In Untis <i>Profil → Freigaben → Zugriff über Untis Mobile → QR-Code anzeigen</i>, die Felder <i>Benutzer</i> und <i>Schlüssel</i> eintragen.</p>
+<input id=us-mu data-uf=muser value="${esc(x.mUser)}" placeholder="Benutzer" autocomplete=off autocapitalize=off>
+<input type=password id=us-mk data-uf=mkey placeholder="${hasKey ? 'Schlüssel gespeichert, zum Ersetzen neu eingeben' : 'Schlüssel'}" autocomplete=off autocapitalize=off style="margin-top:8px">
+<small id=us-mk-info class=d>${hasKey ? 'Schlüssel ist auf diesem Gerät gespeichert. ' : ''}Er bleibt nur auf diesem Gerät (nicht in der Sicherungsdatei).</small>
+<div class=bar style="justify-content:flex-start;flex-wrap:wrap"><button type=button class=bt data-u=mtest>Schlüssel testen</button>${hasKey ? '<button type=button class=bt data-u=mkeyrm>Schlüssel entfernen</button>' : ''}<button type=button class=bt data-u=dosync${busy ? ' data-busy=1 disabled' : ''}>Abgleichen</button></div>
+<h4>ICS-Datei</h4><p class=d>Nur Stundenplan, einmalig. Die Datei wird nur in deinem Browser gelesen.</p><div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=ics>ICS-Datei wählen</button></div>
+<h4>Verbindung</h4><p class=d>Prüft, ob der Worker erreichbar ist und diese Seite (${esc(location.origin)}) zulässt.</p><div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=ptest>Verbindung prüfen</button></div>
+</details></div>`;
   }
 
   // ---------- Ereignisse ----------
@@ -636,18 +633,23 @@ const UntisUI = (() => {
       render();
     } else if (a == 'sync') quick();
     else if (a == 'dosync') doSync();
-    else if (a == 'pwsync') {
-      const i = $('#us-pw');
-      if (i) pw = i.value;
-      if (!U.configure().user) return say('warn', 'Trag zuerst den Untis-Benutzernamen ein.');
-      if (!pw) return say('warn', 'Gib zuerst das Untis-Passwort ein.');
-      doSync({ pass: pw });
-    } else if (a == 'logout') U.logout().then(render);
-    else if (a == 'ptest') {
-      const i = $('#us-px');
-      if (i) U.configure({ proxy: i.value });
+    else if (a == 'login') {
+      const em = $('#us-em'),
+        pi = $('#us-pw'),
+        rm = $('#us-rem');
+      if (em) U.configure({ email: em.value });
+      if (pi) pw = pi.value;
+      if (!U.configure().email) return say('warn', 'Trag zuerst deine Schul-E-Mail ein.');
+      if (!pw && !pwGet()) return say('warn', 'Gib zuerst dein Microsoft-Passwort ein.');
+      if (pw) U.logout().then(() => doSync({ pass: pw, rem: !!(rm && rm.checked) })); // neues Passwort: frisch anmelden
+      else doSync();
+    } else if (a == 'logout') {
+      pwSet('');
+      pw = '';
+      U.logout().then(render);
+    } else if (a == 'ptest') {
       say('', 'Prüfe …');
-      pcheck(i ? i.value : U.configure().proxy).then(([c, tx]) => say(c, tx));
+      pcheck(U.configure().proxy).then(([c, tx]) => say(c, tx));
     } else if (a == 'mtest') {
       const kv = $('#us-mk'),
         mu = $('#us-mu');
@@ -700,10 +702,11 @@ const UntisUI = (() => {
     } else if (a == 'hwdel') {
       if (confirm('Diese Hausaufgabe löschen?')) U.hwRemove(d.id);
     } else if (a == 'pwgo') {
-      const v = $('#up').value;
+      const v = $('#up').value,
+        r = $('#up-rem');
       if (!v) return $('#up').focus();
       dlg().close();
-      doSync({ pass: v });
+      doSync({ pass: v, rem: !!(r && r.checked) });
     } else if (a == 'x') dlg().close();
     else if (a == 'rmdata' && confirm('Stundenplan, Hausaufgaben, Kalender-Link und Schlüssel auf diesem Gerät löschen?')) {
       U.reset();
@@ -719,7 +722,11 @@ const UntisUI = (() => {
     if (e.target.dataset && e.target.dataset.uf == 'pw') pw = e.target.value;
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key == 'Enter' && e.target.id == 'up') {
+    if (e.key == 'Enter' && e.target.id == 'us-pw') {
+      e.preventDefault();
+      const b = document.querySelector('[data-u=login]');
+      if (b) b.click();
+    } else if (e.key == 'Enter' && e.target.id == 'up') {
       e.preventDefault();
       const b = document.querySelector('[data-u=pwgo]');
       if (b) b.click();
@@ -728,6 +735,7 @@ const UntisUI = (() => {
   document.addEventListener('change', (e) => {
     const t = e.target,
       f = t.dataset && t.dataset.uf;
+    if (t.id == 'us-rem' && !t.checked) pwSet(''); // Häkchen weg: gespeichertes Passwort sofort löschen
     if (t.id == 'uf' && t.files && t.files[0]) {
       const r = new FileReader();
       t.value = '';
@@ -770,16 +778,7 @@ const UntisUI = (() => {
         el.textContent = x.message;
         el.classList.add('bad');
       }
-    } else if (f == 'user') U.configure({ user: t.value.trim() });
-    else if (f == 'server' || f == 'school') {
-      U.configure({ [f]: t.value.trim() });
-      const i = $('#us-ical');
-      if (i && i.value) i.dispatchEvent(new Event('change', { bubbles: true }));
-    } else if (f == 'proxy') {
-      U.configure({ proxy: t.value });
-      const p = proxyUrl(t.value);
-      $('#us-csp').textContent = p && !cspAllows(p) ? cspHint(p) : '';
-    } else if (f == 'weeks') U.configure({ weeks: +t.value || 4 });
+    } else if (f == 'email') U.configure({ email: t.value });
     else if (f == 'map') {
       const m = Object.assign({}, U.configure().subjectMap);
       if (t.value) m[t.dataset.n] = t.value;

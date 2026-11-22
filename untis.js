@@ -9,9 +9,10 @@
  * ZWEI WEGE, AN DIE DATEN ZU KOMMEN
  *   A) ICS-Import (ohne CSP-Änderung, passt zur „alles bleibt im Browser“-Idee):
  *        Untis.importIcs(text)             nur Stundenplan, keine Hausaufgaben
- *   B) Live-Abruf über einen kleinen Proxy (untis-worker.js), Stundenplan + Hausaufgaben:
- *        Untis.configure({ url, proxy, user })      einmalig
- *        await Untis.sync({ pass })                 Passwort wird NIE gespeichert
+ *   B) Live-Abruf über den Worker (worker/untis-worker.js), Stundenplan + Hausaufgaben:
+ *        Untis.configure({ email })                 einmalig (Server, Schule, Worker stehen fest in FIX)
+ *        await Untis.sync({ pass })                 Microsoft-Anmeldung über den Worker, nur wenn
+ *                                                   keine gültige Sitzung da ist. Passwort wird hier NIE gespeichert.
  *   Dazu: Untis.hwAdd({...}) für selbst eingetragene Hausaufgaben und
  *   Untis.ingest({lessons, homework}) als freie Schnittstelle für eigene Quellen.
  *
@@ -50,6 +51,12 @@
 const Untis = (() => {
   'use strict';
   const KEY = (typeof K !== 'undefined' ? K : 'abirechner') + '.untis';
+  // Wir haben nur eine Schule: Server, Schule und Worker stehen fest und sind nicht einstellbar
+  const FIX = {
+    server: 'gaesdonck.webuntis.com',
+    school: 'gaesdonck',
+    proxy: 'https://untis-worker.maximilian-stapper.workers.dev',
+  };
 
   // ---------- Datum/Zeit: immer lokale Zeit, 'YYYY-MM-DD' und 'HH:MM' ----------
   const pad = (n) => String(n).padStart(2, '0'),
@@ -82,13 +89,17 @@ const Untis = (() => {
   // ---------- Zustand (localStorage, getrennt von st) ----------
   const blank = () => ({
     v: 1,
-    cfg: { provider: 'rpc', server: '', school: '', proxy: '', user: '', subjectMap: {}, weeks: 4, keepDays: 14 },
+    cfg: Object.assign({ provider: 'ms', user: '', email: '', subjectMap: {}, weeks: 4, keepDays: 14 }, FIX),
     days: {}, // { 'YYYY-MM-DD': [Lesson] }
     hw: [], // [Homework]
     done: {}, // { homeworkId: true/false } – lokal gesetzter Erledigt-Status
     sync: null, // { at, from, to, src }
   });
-  const fill = (s) => Object.assign(blank(), s, { cfg: Object.assign(blank().cfg, s.cfg) });
+  const fill = (s) => {
+    const x = Object.assign(blank(), s, { cfg: Object.assign(blank().cfg, s.cfg, FIX) });
+    if (x.cfg.provider === 'rpc' && !x.cfg.user) x.cfg.provider = 'ms'; // ältere Speicherstände
+    return x;
+  };
   let D = (() => {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
@@ -224,7 +235,19 @@ const Untis = (() => {
     '-8520': 'Sitzung abgelaufen – bitte neu anmelden.',
     '-8509': 'Dieses Untis-Konto darf den Stundenplan nicht abrufen.',
   };
-  let jar = {}, pers = null; // Cookies der Untis-Sitzung + angemeldete Person (nur im Speicher)
+  // Cookies der Untis-Sitzung + angemeldete Person. Nur in sessionStorage (weg, sobald der Tab geschlossen wird).
+  const SKEY = KEY + '.sess';
+  let jar = {}, pers = null;
+  try {
+    const x = JSON.parse(sessionStorage.getItem(SKEY));
+    if (x && x.jar) (jar = x.jar), (pers = x.pers || null);
+  } catch (e) {}
+  const keep = () => {
+    try {
+      if (jar.JSESSIONID) sessionStorage.setItem(SKEY, JSON.stringify({ jar, pers }));
+      else sessionStorage.removeItem(SKEY);
+    } catch (e) {}
+  };
   const jarStr = () => Object.entries(jar).map(([k, v]) => k + '=' + v).join('; ');
   const jarSet = (s) =>
     s.split(/;\s*/).forEach((c) => {
@@ -233,10 +256,12 @@ const Untis = (() => {
     });
   const root = (c) => c.proxy.replace(/\/+$/, '') + '/' + c.server + '/WebUntis';
 
-  async function http(c, path, body) {
+  async function http(c, path, body, o) {
+    o = o || {};
     const h = {};
     if (body) h['Content-Type'] = 'application/json';
     if (Object.keys(jar).length) h['X-Untis-Cookie'] = jarStr();
+    if (o.tok) h.Authorization = 'Bearer ' + o.tok;
     let r;
     try {
       r = await fetch(root(c) + path, {
@@ -250,9 +275,9 @@ const Untis = (() => {
     }
     const ck = r.headers.get('X-Untis-Cookie');
     if (ck) jarSet(ck);
-    if (!r.ok) throw err('HTTP', 'Untis/Proxy antwortete mit Status ' + r.status + '.');
+    if (!r.ok) throw err(r.status === 401 || r.status === 403 || (r.status >= 300 && r.status < 400) ? 'NEED_LOGIN' : 'HTTP', 'Untis/Proxy antwortete mit Status ' + r.status + '.');
     try {
-      return await r.json();
+      return o.raw ? await r.text() : await r.json();
     } catch (e) {
       throw err('API', 'Unerwartete Antwort von Untis (kein JSON).');
     }
@@ -270,6 +295,76 @@ const Untis = (() => {
     jar = {};
     const r = await rpc(c, 'authenticate', { user: c.user, password: pass, client: 'abi-rechner' });
     pers = { type: r.personType, id: r.personId };
+    keep();
+  }
+
+  // ---------- Microsoft-Anmeldung (der Worker spielt den Office-365-Login nach) ----------
+  async function msLogin(c, email, pass) {
+    if (!email || !pass) throw err('NEED_LOGIN', 'Microsoft-E-Mail und Passwort nötig.');
+    let r;
+    try {
+      r = await fetch(c.proxy.replace(/\/+$/, '') + '/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'omit',
+        body: JSON.stringify({ email, password: pass }),
+      });
+    } catch (e) {
+      throw err('NET', 'Keine Verbindung zum Worker. Bitte Internetverbindung prüfen.');
+    }
+    let j = null;
+    try {
+      j = await r.json();
+    } catch (e) {}
+    if (!j) throw err('OLD_WORKER', 'Der Worker kennt die Microsoft-Anmeldung noch nicht (Status ' + r.status + '). Bitte worker/untis-worker.js bei Cloudflare neu deployen.');
+    if (!r.ok || !j.ok) throw err(j.code === 'AUTH' ? 'AUTH' : j.code || 'LOGIN', j.message || 'Die Anmeldung ist fehlgeschlagen.');
+    jar = {};
+    pers = null;
+    jarSet(r.headers.get('X-Untis-Cookie') || '');
+    if (!jar.JSESSIONID) throw err('LOGIN', 'Der Worker hat keine Untis-Sitzung zurückgegeben.');
+    keep();
+  }
+  // Kurzlebiges Token der Sitzung; scheitert es, ist die Sitzung abgelaufen
+  async function token(c) {
+    let t = '';
+    try {
+      t = String(await http(c, '/api/token/new', null, { raw: true })).trim();
+    } catch (e) {
+      if (e.code === 'NET') throw e;
+    }
+    if (!/^[\w-]+\.[\w-]+\.[\w-]*$/.test(t)) throw err('NEED_LOGIN', 'Untis hat dich abgemeldet. Bitte neu anmelden.');
+    return t;
+  }
+  async function who(c, t) {
+    const r = await http(c, '/api/rest/view/v1/app/data', null, { tok: t }),
+      u = (r && r.user) || {},
+      p = u.person || {},
+      roles = (u.roles || []).map(String);
+    if (!p.id) throw err('API', 'Untis liefert keine Personen-Kennung.');
+    pers = { id: p.id, type: roles.includes('TEACHER') && !roles.includes('STUDENT') ? 2 : 5, name: p.displayName || '' };
+  }
+  // Stundenplan einer Woche aus /api/public/timetable/weekly/data (wie die Untis-Webseite)
+  async function weekly(c, t, monday) {
+    const r = await http(c, '/api/public/timetable/weekly/data?elementType=' + pers.type + '&elementId=' + pers.id + '&date=' + monday + '&formatId=1', null, { tok: t }),
+      d = r && r.data && r.data.result && r.data.result.data;
+    if (!d || !d.elementPeriods) throw err('API', 'Unerwartete Antwort beim Stundenplan.');
+    const el = new Map((d.elements || []).map((e) => [e.type + ':' + e.id, e])),
+      nme = (e) => e.name || e.displayname || e.longName || '';
+    return (d.elementPeriods[pers.id] || [])
+      .map((p) => {
+        const g = (ty) => (p.elements || []).filter((e) => e.type === ty).map((e) => el.get(ty + ':' + e.id)).filter(Boolean),
+          su = g(3)[0], is = p.is || {}, cs = String(p.cellState || '');
+        const status = is.cancelled || cs === 'CANCEL' ? 'cancelled'
+          : is.exam || cs === 'EXAM' ? 'exam'
+          : is.substitution || is.additional || is.roomSubstitution || is.shift || /SUBST|ADDITIONAL|SHIFT/.test(cs) ? 'changed' : 'ok';
+        const l = mkLesson({
+          id: 'w' + p.id + '|' + p.date + '|' + p.startTime,
+          date: d8(p.date), start: t4(p.startTime), end: t4(p.endTime),
+          subName: su ? nme(su) : '', subLong: su ? su.longName || su.displayname || '' : '',
+          teacher: g(2).map(nme).join(', '), room: g(4).map(nme).join(', '), cls: g(1).map(nme).join(', '),
+          status, note: [p.substText, p.lessonText, p.periodText].filter(Boolean).join(' · '), src: 'ms',
+        });
+        return hook(H.lesson, p, l);
+      })
+      .filter(Boolean);
   }
 
   const nm = (x) => (x ? x.name || x.longname || x.longName || '' : ''),
@@ -289,7 +384,7 @@ const Untis = (() => {
     return hook(H.lesson, p, l);
   };
   // Hausaufgaben: GET /WebUntis/api/homeworks/lessons → { data: { homeworks, records, teachers, lessons } }
-  const fromHw = (data) => {
+  const fromHw = (data, src) => {
     const by = (a) => new Map((a || []).map((x) => [x.id, x]));
     const les = by(data.lessons), te = by(data.teachers), rec = new Map((data.records || []).map((x) => [x.homeworkId, x]));
     return (data.homeworks || [])
@@ -297,14 +392,65 @@ const Untis = (() => {
         const le = les.get(h.lessonId) || {}, t = te.get((rec.get(h.id) || {}).teacherId) || {};
         const x = mkHw({
           id: 'h' + h.id, date: d8(h.date), due: d8(h.dueDate), text: h.text || '', remark: h.remark || '',
-          subName: le.subject || '', teacher: t.name || '', done: !!h.completed, src: 'rpc',
+          subName: le.subject || '', teacher: t.name || '', done: !!h.completed, src: src || 'rpc',
         });
         return hook(H.homework, h, x);
       })
       .filter(Boolean);
   };
 
+  const ttOpts = (a) => ({
+    options: {
+      element: { id: pers.id, type: pers.type },
+      startDate: n8(a.from), endDate: n8(a.to),
+      showInfo: true, showSubstText: true, showLsText: true, showStudentgroup: true,
+      klasseFields: ['name', 'longname'], roomFields: ['name', 'longname'],
+      subjectFields: ['name', 'longname'], teacherFields: ['name', 'longname'],
+    },
+  });
   const P = {
+    ms: {
+      name: 'ms',
+      async fetch(a) {
+        const c = a.cfg;
+        let t = '';
+        if (jar.JSESSIONID) {
+          try {
+            t = await token(c);
+          } catch (e) {
+            if (e.code !== 'NEED_LOGIN') throw e;
+            jar = {}; pers = null; keep();
+          }
+        }
+        if (!t) {
+          if (!a.pass) throw err('NEED_LOGIN', 'Bitte mit Microsoft anmelden.');
+          await msLogin(c, a.email || c.email, a.pass);
+          t = await token(c);
+        }
+        if (!pers) await who(c, t);
+        keep();
+        const out = { lessons: [], warn: [] };
+        try {
+          for (let m = mon(a.from); m <= a.to; m = add(m, 7)) out.lessons.push(...(await weekly(c, t, m)));
+          if (api.debug) console.log('[Untis] Stundenplan', out.lessons);
+        } catch (e) {
+          if (e.code === 'NET' || e.code === 'NEED_LOGIN') throw e;
+          try { // Ersatzweg: JSON-RPC mit derselben Sitzung
+            out.lessons = ((await rpc(c, 'getTimetable', ttOpts(a))) || []).map(fromRpc).filter(Boolean);
+          } catch (e2) {
+            throw err(e.code || 'API', 'Stundenplan: ' + e.message);
+          }
+        }
+        try {
+          const h = await http(c, '/api/homeworks/lessons?startDate=' + n8(a.hwFrom) + '&endDate=' + n8(a.hwTo), null, { tok: t });
+          if (api.debug) console.log('[Untis] Hausaufgaben roh', h);
+          out.homework = fromHw(h.data || h, 'ms');
+        } catch (e) {
+          out.warn.push('Hausaufgaben: ' + e.message); // Stundenplan bleibt trotzdem erhalten
+        }
+        return out;
+      },
+    },
     rpc: {
       name: 'rpc',
       async fetch(a) {
@@ -312,22 +458,14 @@ const Untis = (() => {
         if (!c.proxy || !c.server || !c.school) throw err('CONFIG', 'Server, Schulname und Proxy-URL fehlen (Untis.configure).');
         const go = async () => {
           if (!jar.JSESSIONID || !pers) await login(c, a.pass);
-          return rpc(c, 'getTimetable', {
-            options: {
-              element: { id: pers.id, type: pers.type },
-              startDate: n8(a.from), endDate: n8(a.to),
-              showInfo: true, showSubstText: true, showLsText: true, showStudentgroup: true,
-              klasseFields: ['name', 'longname'], roomFields: ['name', 'longname'],
-              subjectFields: ['name', 'longname'], teacherFields: ['name', 'longname'],
-            },
-          });
+          return rpc(c, 'getTimetable', ttOpts(a));
         };
         let t;
         try {
           t = await go();
         } catch (e) {
           if (e.code !== 'NEED_LOGIN' || !a.pass) throw e;
-          jar = {}; pers = null; // Sitzung abgelaufen → einmal neu anmelden
+          jar = {}; pers = null; keep(); // Sitzung abgelaufen → einmal neu anmelden
           t = await go();
         }
         if (api.debug) console.log('[Untis] Stundenplan roh', t);
@@ -335,7 +473,7 @@ const Untis = (() => {
         try {
           const h = await http(c, '/api/homeworks/lessons?startDate=' + n8(a.hwFrom) + '&endDate=' + n8(a.hwTo));
           if (api.debug) console.log('[Untis] Hausaufgaben roh', h);
-          out.homework = fromHw(h.data || h);
+          out.homework = fromHw(h.data || h, 'rpc');
         } catch (e) {
           out.warn.push('Hausaufgaben: ' + e.message); // Stundenplan bleibt trotzdem erhalten
         }
@@ -347,13 +485,13 @@ const Untis = (() => {
   async function sync(o) {
     o = o || {};
     if (busy) throw err('BUSY', 'Es läuft bereits ein Abgleich.');
-    const c = D.cfg, p = P[c.provider];
+    const c = D.cfg, p = P[o.provider || c.provider];
     if (!p) throw err('CONFIG', 'Unbekannte Quelle: ' + c.provider);
     const from = o.from || mon(today()), to = o.to || add(from, 7 * c.weeks - 1);
     busy = true; lastErr = null;
     emit('status', status());
     try {
-      const r = await p.fetch({ cfg: c, from, to, pass: o.pass, hwFrom: add(today(), -14), hwTo: add(today(), 60) });
+      const r = await p.fetch({ cfg: c, from, to, pass: o.pass, email: o.email, hwFrom: add(today(), -14), hwTo: add(today(), 60) });
       const n = ingest(r, { from, to, src: p.name });
       return Object.assign(n, { warn: r.warn || [] });
     } catch (e) {
@@ -366,9 +504,9 @@ const Untis = (() => {
   }
   async function logout() {
     try {
-      if (jar.JSESSIONID) await rpc(D.cfg, 'logout', {});
+      if (jar.JSESSIONID && D.cfg.provider === 'rpc') await rpc(D.cfg, 'logout', {});
     } catch (e) {}
-    jar = {}; pers = null;
+    jar = {}; pers = null; keep();
     emit('status', status());
   }
 
@@ -505,16 +643,8 @@ const Untis = (() => {
     if (p) {
       p = Object.assign({}, p);
       delete p.pass; delete p.password; // Passwörter werden nie gespeichert
-      if (p.url) { // z. B. die Adresse aus der Browser-Leiste: https://xyz.webuntis.com/WebUntis/?school=abc
-        try {
-          const u = new URL(p.url);
-          p.server = u.host;
-          if (u.searchParams.get('school')) p.school = u.searchParams.get('school');
-        } catch (e) {}
-        delete p.url;
-      }
-      if (p.server) p.server = String(p.server).replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
-      if (p.proxy != null) p.proxy = String(p.proxy).trim();
+      delete p.url; delete p.server; delete p.school; delete p.proxy; // stehen fest (FIX)
+      if (p.email != null) p.email = String(p.email).trim();
       const old = JSON.stringify(D.cfg.subjectMap);
       Object.assign(D.cfg, p);
       if (JSON.stringify(D.cfg.subjectMap) !== old) remap();
@@ -524,20 +654,23 @@ const Untis = (() => {
     return JSON.parse(JSON.stringify(D.cfg));
   }
   const status = () => ({
-    busy, error: lastErr, provider: D.cfg.provider, connected: !!jar.JSESSIONID,
+    busy, error: lastErr, provider: D.cfg.provider, connected: !!jar.JSESSIONID, who: pers && pers.name ? pers.name : '',
     lastSync: D.sync ? D.sync.at : null, range: D.sync ? [D.sync.from, D.sync.to] : null,
     lessons: Object.values(D.days).reduce((n, a) => n + a.length, 0), homework: D.hw.length,
   });
-  const backup = () => ({ v: 1, cfg: Object.assign({}, D.cfg, { user: '' }), days: D.days, hw: D.hw, done: D.done, sync: D.sync });
+  const backup = () => ({ v: 1, cfg: Object.assign({}, D.cfg, { user: '', email: '' }), days: D.days, hw: D.hw, done: D.done, sync: D.sync });
   const restore = (b) => {
     if (!b || b.v !== 1 || typeof b.days !== 'object' || !Array.isArray(b.hw)) return false;
+    const mine = { email: D.cfg.email, user: D.cfg.user }; // Zugangsdaten stehen nicht in der Sicherung
     D = fill(b);
+    if (!D.cfg.email) D.cfg.email = mine.email;
+    if (!D.cfg.user) D.cfg.user = mine.user;
     save();
     emit('change');
     return true;
   };
   const reset = () => {
-    jar = {}; pers = null; D = blank();
+    jar = {}; pers = null; keep(); D = blank();
     try { localStorage.removeItem(KEY); } catch (e) {}
     emit('change');
   };
