@@ -238,18 +238,20 @@ async function msLogin(email, pass) {
       x = await step(jar, new URL(c.urlPost, x.url).href);
       continue;
     }
-    // „Umleitung“ nach dem Absenden (z. B. 50168): Die Seite schickt das Formular per Skript erneut an urlPost (sso_reload=True)
-    if (sent && !c.pgid && lastForm && c.urlPost && /sso_reload/i.test(c.urlPost) && ++reload <= 3) {
+    // „Umleitung“ nach jedem Absenden (50168): Die Seite schickt DASSELBE Formular per Skript erneut an urlPost (sso_reload=True)
+    if (sent && !c.pgid && lastForm && c.urlPost && /sso_reload/i.test(c.urlPost) && ++reload <= 8) {
       x = await step(jar, new URL(c.urlPost, x.url).href, Object.assign({}, lastForm, c.sFT ? { flowToken: c.sFT } : {}, c.sCtx ? { ctx: c.sCtx } : {}, c.canary ? { canary: c.canary } : {}));
       continue;
     }
     // Fehlercodes zählen erst nach dem Absenden (vorher meldet Microsoft z. B. 50058 = „noch nicht angemeldet“)
-    const code = sent ? +(c.sErrorCode || c.iErrorCode || c.stsErrorCode || 0) : 0;
+    // Keine echten Fehler: 50058 nicht angemeldet, 50140 „Angemeldet bleiben?“, 50168 Umleitung
+    const raw = sent ? +(c.sErrorCode || c.iErrorCode || c.stsErrorCode || 0) : 0,
+      code = [50058, 50140, 50168].includes(raw) ? 0 : raw;
     if (code && MS_ERR[code]) throw fail(...MS_ERR[code]);
     if (code) throw fail('MS', 'Microsoft lehnt die Anmeldung ab (Fehler ' + code + ').');
     if (c.strServiceExceptionMessage) throw fail('MS', 'Microsoft meldet: ' + String(c.strServiceExceptionMessage).slice(0, 200));
     const pg = String(c.pgid || '');
-    const post = (form) => step(jar, new URL(c.urlPost || '/common/login', x.url).href, form);
+    const post = (form) => step(jar, new URL(c.urlPost || '/common/login', x.url).href, (lastForm = form));
     if (/TFA|ProofUp|Mfa/i.test(pg) || (c.arrUserProofs && c.arrUserProofs.length)) throw mfa();
     if (/ChangePassword/i.test(pg)) throw fail(...MS_ERR[50055]);
     if (/Kmsi/i.test(pg)) {
@@ -258,14 +260,15 @@ async function msLogin(email, pass) {
       continue;
     }
     if (/ConvergedSignIn/i.test(pg) || (!sent && c.sFT && c.sCtx)) {
+      if (sent && kmsi) throw fail('FLOW', 'Microsoft hat nach „Angemeldet bleiben?“ wieder die Anmeldeseite gezeigt.');
       if (sent) throw fail('AUTH', 'E-Mail oder Passwort ist falsch.');
       sent = true;
-      x = await post((lastForm = {
+      x = await post({
         i13: '0', login: email, loginfmt: email, type: '11', LoginOptions: '3', lrt: '', lrtPartition: '', hisRegion: '', hisScaleUnit: '',
         passwd: pass, ps: '2', psRNGCDefaultType: '', psRNGCEntropy: '', psRNGCSLK: '', canary: c.canary || '', ctx: c.sCtx,
         hpgrequestid: c.sessionId || '', flowToken: c.sFT, PPSX: '', NewUser: '1', FoundMSAs: '', fspost: '0', i21: '0',
         CookieDisclosure: '0', IsFidoSupported: '1', isSignupPost: '0', DfpArtifact: '', i19: '3000',
-      }));
+      });
       continue;
     }
     throw fail('FLOW', 'Microsoft zeigt eine Seite, die der Worker nicht kennt (' + (pg || 'unbekannt') + '). Melde dich einmal im Browser bei Untis an und bestätige dort alles.');
