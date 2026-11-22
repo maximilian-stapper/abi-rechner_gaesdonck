@@ -533,3 +533,26 @@ dialog.un[open] {
     filter: none;
   }
 }
+
+/* Leistungskurs: gleicher Farbton wie das Grundkursfach, aber kräftiger (dicker Rand, stärkere Fläche) */
+.un-ls.is-lk {
+  border-left-width: 6px;
+  background: hsl(var(--h) 60% 45% / 0.5);
+}
+.un-ls.is-lk b {
+  font-weight: 800;
+}
+
+/* Einrichten: aufklappbare Bereiche */
+.g details > summary {
+  padding: 4px 0;
+}
+.g details[open] > summary {
+  margin-bottom: 4px;
+}
+.g details > h4:first-of-type {
+  margin-top: 8px;
+}
+.un-nt .lk {
+  padding: 0 2px;
+}

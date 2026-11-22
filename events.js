@@ -64,6 +64,8 @@ document.addEventListener('click', (e) => {
       localStorage.removeItem(K);
     } catch (x) {}
     Untis.reset();
+    UntisUI.wipe();
+    UntisUI.defaults();
     st = null;
     tab = 'ov';
     W = null;
@@ -98,7 +100,10 @@ document.addEventListener('change', (e) => {
         const u = s.untis; // Untis-Daten gehören nicht in st; ältere Sicherungen haben sie nicht und lassen die vorhandenen unberührt
         delete s.untis;
         st = migrate(s);
-        if (u) Untis.restore(u);
+        if (u) {
+          Untis.restore(u);
+          UntisUI.defaults(); // feste Adressen auffüllen, falls die Sicherung sie nicht enthält
+        }
         W = null;
         step = 1;
         save();

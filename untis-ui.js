@@ -1,8 +1,8 @@
 /* =============================================================================
  * untis-ui.js – Oberfläche für den Untis-Planer (Stundenplan + Hausaufgaben)
  *
- * Nutzt untis.js (Untis) sowie $, esc, NM, S, st, tab aus den anderen Dateien.
- * Eingebunden in index.html nach untis.js, vor views.js. views.js ruft head() und view() auf.
+ * Nutzt untis.js (Untis), untis-subjects.js (Fach-Erkennung), untis-mobile.js (Anmeldung ohne Passwort)
+ * sowie $, esc, K, st, tab aus den anderen Dateien. views.js ruft head() und view() auf.
  * Alle Aktionen laufen über data-u="…" (getrennt von data-a/-e/-t/-c in events.js).
  *
  * WICHTIG: Fachnamen, Lehrer, Räume und Hausaufgabentexte sind Fremdtext.
@@ -10,12 +10,21 @@
  * ========================================================================== */
 const UntisUI = (() => {
   'use strict';
-  const U = Untis;
+  const U = Untis,
+    US = UntisSubjects,
+    UM = UntisMobile;
 
   // Zeitrahmen des Plans: nur dieser Bereich wird gezeigt (Termine außerhalb werden gekürzt oder ausgeblendet)
   const FROM = '07:55',
     TO = '18:30',
     PX = 0.9; // Pixel pro Minute
+
+  // Feste Werte für Gaesdonck: müssen nicht eingetragen werden (stehen nur unter „Erweitert“)
+  const DEFAULTS = {
+    server: 'gaesdonck.webuntis.com',
+    school: 'gaesdonck',
+    proxy: 'https://untis-worker.maximilian-stapper.workers.dev',
+  };
 
   // ---------- Hilfen ----------
   const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
@@ -43,31 +52,33 @@ const UntisUI = (() => {
       const d = new Date(ms);
       return WD[(d.getDay() + 6) % 7] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) + '., ' + two(d.getHours()) + ':' + two(d.getMinutes());
     },
-    own = (o, k) => Object.prototype.hasOwnProperty.call(o, k),
-    nmOf = (k) => (own(NM, k) ? NM[k] : '');
+    own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
   // ---------- Fächer: Schlüssel, Name, Kürzel, Farbe ----------
+  // Der Schlüssel kommt aus der Fach-Erkennung (untis-subjects.js): 'de', 'de-lk', 'es', 'gr', 'pk-pkku' …
+  // Was nicht erkannt wird, bleibt unter seinem Untis-Namen stehen und lässt sich in „Einrichten“ zuordnen.
   const key = (x) => x.sub || x.subName || '?',
-    label = (x) => (x.sub && nmOf(x.sub)) || x.subLong || x.subName || 'Sonstige',
-    SH = new Map(
-      Object.entries({
-        de: 'Deu', en: 'Eng', fr: 'Fra', la: 'Lat', es: 'Spa', e9: 'Spa', ku: 'Kun', mu: 'Mus', li: 'Lit', ek: 'Ek',
-        ge: 'Ges', sw: 'SoWi', re: 'Rel', sp: 'Spo', ma: 'Mat', bi: 'Bio', ch: 'Che', ph: 'Phy', if: 'Inf',
-      }),
-    ),
-    short = (l) => SH.get(l.sub) || String(l.subName || '?').split(/[\s\-_./\d]/)[0].slice(0, 5) || '?',
+    label = (x) => (x.sub ? US.name(x.sub, x.subLong) : x.subLong || x.subName || 'Sonstige'),
+    short = (l) => US.short(key(l)) || String(l.subName || '?').split(/[\s\-_./\d]/)[0].slice(0, 5) || '?',
     HU = new Map(
       Object.entries({
-        de: 345, en: 25, fr: 200, la: 45, es: 325, e9: 325, ku: 285, mu: 305, li: 262, ek: 150, ge: 75, sw: 100,
-        re: 238, sp: 175, ma: 215, bi: 125, ch: 165, ph: 190, if: 8,
+        de: 345, en: 25, fr: 200, la: 45, es: 325, e9: 325, ku: 285, mu: 305, li: 262, ek: 150, ge: 75, sw: 100, re: 238,
+        sp: 175, ma: 215, bi: 125, ch: 165, ph: 190, if: 8, gr: 60, daf: 355, pl: 255, pa: 12,
       }),
     ),
+    // Gleiches Fach, gleicher Farbton: Grund- und Leistungskurs unterscheiden sich nur durch die Randstärke
     hue = (k) => {
-      if (HU.has(k)) return HU.get(k);
+      const b = US.split(k).base;
+      if (HU.has(b)) return HU.get(b);
       let h = 7;
-      for (const c of String(k)) h = (h * 31 + c.charCodeAt(0)) % 360;
+      for (const c of String(b)) h = (h * 31 + c.charCodeAt(0)) % 360;
       return h;
-    };
+    },
+    isLk = (k) => US.split(k).lk;
+
+  // ---------- Hausaufgaben: Überfälliges wird nie gezeigt (Lehrkräfte haken Erledigtes nicht ab) ----------
+  const vis = (h) => !h.due || h.due >= U.util.today(),
+    hws = () => U.homework().filter(vis).sort((a, b) => (a.due || '9').localeCompare(b.due || '9')); // ohne Fälligkeit ans Ende
 
   // Alle Fächer, die im Plan oder bei den Hausaufgaben vorkommen: Map Schlüssel → Name
   function subjects() {
@@ -78,16 +89,60 @@ const UntisUI = (() => {
       },
       td = U.util.today();
     U.range(U.util.add(td, -14), U.util.add(td, 63)).forEach(add);
-    U.homework().forEach(add);
+    hws().forEach(add);
     return m;
   }
 
+  // ---------- Eigene Einstellungen (getrennt von den Untis-Daten, nie in der Sicherungsdatei) ----------
+  const SK = (typeof K !== 'undefined' ? K : 'abirechner') + '.untis.ui', // { ical, mUser }
+    SS = SK + '.key'; // Untis-Mobile-Schlüssel: nur auf diesem Gerät
+  const ux = () => {
+      try {
+        return Object.assign({ ical: '', mUser: '' }, JSON.parse(localStorage.getItem(SK)) || {});
+      } catch (e) {
+        return { ical: '', mUser: '' };
+      }
+    },
+    uxSet = (p) => {
+      const x = Object.assign(ux(), p);
+      try {
+        localStorage.setItem(SK, JSON.stringify(x));
+      } catch (e) {}
+      return x;
+    },
+    keyGet = () => {
+      try {
+        return localStorage.getItem(SS) || '';
+      } catch (e) {
+        return '';
+      }
+    },
+    keySet = (k) => {
+      try {
+        if (k) localStorage.setItem(SS, k);
+        else localStorage.removeItem(SS);
+      } catch (e) {}
+    };
+  function wipe() {
+    try {
+      localStorage.removeItem(SK);
+      localStorage.removeItem(SS);
+    } catch (e) {}
+  }
+  function defaults() {
+    const c = U.configure(),
+      p = {};
+    for (const k of Object.keys(DEFAULTS)) if (!c[k]) p[k] = DEFAULTS[k];
+    if (Object.keys(p).length) U.configure(p);
+  }
+  U.setResolver(US.resolve);
+  defaults();
+
   // ---------- Zustand der Oberfläche ----------
-  // Wochenende: gleich die kommende Woche zeigen
   const homeWeek = () => {
     const t = U.util.today(),
       m = U.util.mon(t);
-    return wdOf(t) >= 5 ? U.util.add(m, 7) : m;
+    return wdOf(t) >= 5 ? U.util.add(m, 7) : m; // Wochenende: gleich die kommende Woche zeigen
   };
   let view = 'plan', // 'plan' | 'setup'
     wk = homeWeek(),
@@ -95,6 +150,7 @@ const UntisUI = (() => {
     pw = '', // Passwort nur im Speicher, nie gespeichert
     msg = null, // { c: 'ok'|'warn'|'err', t }
     lastTab = 'ov',
+    uiBusy = false,
     cur = null; // geöffnetes Fach-Blatt { k, ls }
 
   const active = () => tab === 'un' && !!st;
@@ -111,14 +167,13 @@ const UntisUI = (() => {
     if (!h.due) return { t: 'ohne Datum', c: '' };
     if (h.due === t) return { t: 'heute fällig', c: 'now' };
     if (h.due === U.util.add(t, 1)) return { t: 'morgen fällig', c: 'soon' };
-    if (h.due < t) return { t: 'überfällig seit ' + fmt(h.due), c: 'late' };
     return { t: 'fällig ' + fmt(h.due), c: '' };
   }
   // lnk = true: Zeile in der Übersicht (Tippen öffnet das Fach), sonst im Fach-Blatt
   function hwItem(h, lnk, reg) {
     const k = key(h),
       d = due(h),
-      body = `${lnk ? `<div class=sn>${esc(reg.get(k) || label(h))}</div>` : ''}<div class=t>${esc(h.text || '(ohne Text)')}</div>${h.remark ? `<div class=r>${esc(h.remark)}</div>` : ''}<small class="due ${d.c}">${esc(d.t)}${h.teacher ? ' · ' + esc(h.teacher) : ''}${h.src === 'manual' ? ' · selbst eingetragen' : ''}</small>`;
+      body = `${lnk ? `<div class=sn>${esc(reg.get(k) || US.name(k, h.subName))}</div>` : ''}<div class=t>${esc(h.text || '(ohne Text)')}</div>${h.remark ? `<div class=r>${esc(h.remark)}</div>` : ''}<small class="due ${d.c}">${esc(d.t)}${h.teacher ? ' · ' + esc(h.teacher) : ''}${h.src === 'manual' ? ' · selbst eingetragen' : ''}</small>`;
     return `<div class="un-hw${h.done ? ' dn' : ''}" style="--h:${hue(k)}"><button type=button class=uchk data-u=chk data-id="${esc(h.id)}" aria-pressed="${!!h.done}" aria-label="${h.done ? 'Als offen markieren' : 'Als erledigt markieren'}"></button>${lnk ? `<button type=button class=un-hb data-u=sub data-k="${esc(k)}">${body}</button>` : `<div class=un-hb>${body}</div>`}${!lnk && h.src === 'manual' ? `<button type=button class=ux data-u=hwdel data-id="${esc(h.id)}" aria-label="Hausaufgabe löschen">✕</button>` : ''}</div>`;
   }
 
@@ -184,8 +239,9 @@ const UntisUI = (() => {
               const k = key(l),
                 h = Math.max(Math.round((e - s) * PX) - 2, 14),
                 cnt = open.get(k) || 0,
-                sx = STX[l.status] || '';
-              return `<button type=button class="un-ls${l.status === 'cancelled' ? ' x' : l.status === 'changed' ? ' c' : l.status === 'exam' ? ' e' : ''}" data-u=ls data-k="${esc(k)}" data-d="${d.date}" data-id="${esc(l.id)}" data-s="${l.start}" style="--h:${hue(k)};top:${y(s) + 1}px;height:${h}px;left:calc(${(lane / n) * 100}% + 1px);width:calc(${100 / n}% - 2px)" aria-label="${esc(label(l) + ', ' + l.start + ' bis ' + l.end + (sx ? ', ' + sx : '') + (cnt ? ', ' + cnt + ' offene Hausaufgaben' : ''))}"><b>${esc(short(l))}</b>${h >= 30 && l.room ? `<small>${esc(l.room)}</small>` : ''}${cnt ? `<span class=un-bg>${cnt}</span>` : ''}</button>`;
+                sx = STX[l.status] || '',
+                cls = (l.status === 'cancelled' ? ' x' : l.status === 'changed' ? ' c' : l.status === 'exam' ? ' e' : '') + (isLk(k) ? ' is-lk' : '');
+              return `<button type=button class="un-ls${cls}" data-u=ls data-k="${esc(k)}" data-d="${d.date}" data-id="${esc(l.id)}" data-s="${l.start}" style="--h:${hue(k)};top:${y(s) + 1}px;height:${h}px;left:calc(${(lane / n) * 100}% + 1px);width:calc(${100 / n}% - 2px)" aria-label="${esc(label(l) + ', ' + l.start + ' bis ' + l.end + (sx ? ', ' + sx : '') + (cnt ? ', ' + cnt + ' offene Hausaufgaben' : ''))}"><b>${esc(short(l))}</b>${h >= 30 && l.room ? `<small>${esc(l.room)}</small>` : ''}${cnt ? `<span class=un-bg>${cnt}</span>` : ''}</button>`;
             })
             .join('');
           const line = d.date === td && nowM >= F && nowM <= T ? `<i class=un-now style="top:${y(nowM)}px"></i>` : '';
@@ -202,7 +258,7 @@ const UntisUI = (() => {
     const td = U.util.today(),
       s = U.status(),
       w = U.week(wk, { merge: 10 }),
-      hw = U.homework(),
+      hw = hws(),
       open = new Map(),
       reg = subjects(),
       has = s.lessons > 0 || s.homework > 0,
@@ -215,7 +271,7 @@ const UntisUI = (() => {
 
     // Noch nichts eingerichtet
     const first = !has
-      ? `<div class=g><h2>Stundenplan und Hausaufgaben</h2><p class=d>Hier erscheinen deine Fächer bunt im Wochenplan, und mit einem Tipp auf ein Fach siehst du die Hausaufgaben. Hole die Daten per Live-Abruf aus WebUntis oder per ICS-Datei.</p><div class=bar style="justify-content:flex-start"><button type=button class="bt pr" data-u=setup>Untis einrichten</button></div></div>`
+      ? `<div class=g><h2>Stundenplan und Hausaufgaben</h2><p class=d>Hier erscheinen deine Fächer bunt im Wochenplan, und mit einem Tipp auf ein Fach siehst du die Hausaufgaben. Die Anmeldung läuft über dein Microsoft-Konto, ein Untis-Passwort ist nicht nötig.</p><div class=bar style="justify-content:flex-start"><button type=button class="bt pr" data-u=setup>Untis einrichten</button></div></div>`
       : '';
 
     // Als Nächstes
@@ -233,20 +289,21 @@ const UntisUI = (() => {
       if (r.hidden) note += `<small class="d un-nt">${r.hidden} Termin${r.hidden == 1 ? '' : 'e'} außerhalb von ${FROM} bis ${TO} ${r.hidden == 1 ? 'wird' : 'werden'} nicht angezeigt.</small>`;
     }
     const um = U.unmapped();
-    if (um.length) note += `<small class="d un-nt">${um.length} Fach${um.length == 1 ? '' : 'e'} noch nicht zugeordnet: ${um.slice(0, 4).map(esc).join(', ')}${um.length > 4 ? ' …' : ''} <button type=button class=lk data-u=setup>Zuordnen</button></small>`;
+    if (um.length) note += `<small class="d un-nt">${um.length} Fach${um.length == 1 ? '' : 'e'} nicht erkannt: ${um.slice(0, 4).map(esc).join(', ')}${um.length > 4 ? ' …' : ''} <button type=button class=lk data-u=setup>Zuordnen</button></small>`;
 
     const wlabel = (() => {
       const a = P(w.from),
         b = P(U.util.add(w.from, 4));
       return a.getMonth() === b.getMonth() ? `${a.getDate()}.–${b.getDate()}. ${MO[b.getMonth()]}` : `${a.getDate()}. ${MO[a.getMonth()]} – ${b.getDate()}. ${MO[b.getMonth()]}`;
     })();
+    const busy = uiBusy || s.busy;
 
     const planCard = has
-      ? `<div class=g><div class=un-nav><button type=button class=ib data-u=prev aria-label="Vorige Woche">‹</button><div class=wk><b>KW ${kw(w.from)}</b><small>${wlabel}</small></div><button type=button class=ib data-u=next aria-label="Nächste Woche">›</button><button type=button class=bt data-u=today${w.from === homeWeek() ? ' disabled' : ''}>Heute</button></div>${g}<div class=un-foot>${note}<small class=d>${s.lastSync ? 'Stand: ' + stamp(s.lastSync) + ' · ' : ''}${s.lessons} Stunden</small><span class=sp></span><button type=button class=lk data-u=sync ${s.busy ? 'data-busy=1 disabled' : ''}>Abgleichen</button><button type=button class=lk data-u=setup>Einrichten</button></div></div>`
+      ? `<div class=g><div class=un-nav><button type=button class=ib data-u=prev aria-label="Vorige Woche">‹</button><div class=wk><b>KW ${kw(w.from)}</b><small>${wlabel}</small></div><button type=button class=ib data-u=next aria-label="Nächste Woche">›</button><button type=button class=bt data-u=today${w.from === homeWeek() ? ' disabled' : ''}>Heute</button></div>${g}<div class=un-foot>${note}<small class=d>${s.lastSync ? 'Stand: ' + stamp(s.lastSync) + ' · ' : ''}${s.lessons} Stunden</small><span class=sp></span><button type=button class=lk data-u=sync ${busy ? 'data-busy=1 disabled' : ''}>Abgleichen</button><button type=button class=lk data-u=setup>Einrichten</button></div></div>`
       : '';
 
-    // Hausaufgaben
-    const list = (hwAll ? hw : hw.filter((h) => !h.done)),
+    // Hausaufgaben (Überfälliges fehlt absichtlich)
+    const list = hwAll ? hw : hw.filter((h) => !h.done),
       chips = [...reg.entries()]
         .sort((a, b) => a[1].localeCompare(b[1], 'de'))
         .map(([k, n]) => `<button type=button class=un-chip data-u=sub data-k="${esc(k)}" style="--h:${hue(k)}">${esc(n)}${open.get(k) ? `<em>${open.get(k)}</em>` : ''}</button>`)
@@ -271,14 +328,14 @@ const UntisUI = (() => {
     cur = { k, ls };
     const d = dlg(),
       reg = subjects(),
-      all = U.homework().filter((h) => key(h) === k),
+      all = hws().filter((h) => key(h) === k),
       op = all.filter((h) => !h.done),
       dn = all.filter((h) => h.done),
       l = ls ? findLesson(ls.date, ls.id, ls.start) : null,
       old = d.querySelector('.dbody'),
       y = old ? old.scrollTop : 0;
     d.className = 'un';
-    d.innerHTML = `<h3 style="--h:${hue(k)}"><span class=dot></span>${esc(reg.get(k) || nmOf(k) || k)}</h3><div class=dbody>${l ? lessonInfo(l) : ''}<h4>Hausaufgaben</h4>${op.length ? op.map((h) => hwItem(h, false)).join('') : '<p class=d>Keine offenen Hausaufgaben.</p>'}${dn.length ? '<h4>Erledigt</h4>' + dn.map((h) => hwItem(h, false)).join('') : ''}</div><div class=bar><button type=button class=bt data-u=hwnew data-k="${esc(k)}">+ Hausaufgabe</button><button type=button class="bt pr" data-u=x>Schließen</button></div>`;
+    d.innerHTML = `<h3 style="--h:${hue(k)}"><span class=dot></span>${esc(reg.get(k) || US.name(k))}</h3><div class=dbody>${l ? lessonInfo(l) : ''}<h4>Hausaufgaben</h4>${op.length ? op.map((h) => hwItem(h, false)).join('') : '<p class=d>Keine offenen Hausaufgaben.</p>'}${dn.length ? '<h4>Erledigt</h4>' + dn.map((h) => hwItem(h, false)).join('') : ''}</div><div class=bar><button type=button class=bt data-u=hwnew data-k="${esc(k)}">+ Hausaufgabe</button><button type=button class="bt pr" data-u=x>Schließen</button></div>`;
     if (!d.open) d.showModal();
     const nb = d.querySelector('.dbody');
     if (nb) nb.scrollTop = y;
@@ -287,7 +344,7 @@ const UntisUI = (() => {
     cur = null;
     const d = dlg(),
       reg = subjects(),
-      rest = S.filter(([id]) => !reg.has(id)),
+      rest = Object.entries(US.NAMES).filter(([id]) => id !== 'e9' && id !== 'stl' && !reg.has(id)),
       opt = (id, n) => `<option value="${esc(id)}"${id === k ? ' selected' : ''}>${esc(n)}</option>`;
     d.className = 'un';
     d.innerHTML = `<h3>Hausaufgabe eintragen</h3><div class=dbody><h4>Fach</h4><select id=ua>${reg.size ? `<optgroup label="Aus deinem Plan">${[...reg.entries()].map(([id, n]) => opt(id, n)).join('')}</optgroup>` : ''}<optgroup label="${reg.size ? 'Weitere Fächer' : 'Fächer'}">${rest.map(([id, n]) => opt(id, n)).join('')}</optgroup></select><h4>Aufgabe</h4><textarea id=ut rows=3 maxlength=500 placeholder="z. B. S. 45 Nr. 3"></textarea><h4>Fällig am</h4><input type=date id=ud value="${U.util.add(U.util.today(), 1)}"></div><div class=bar><button type=button class=bt data-u=hwcancel data-k="${esc(k)}">Abbrechen</button><button type=button class="bt pr" data-u=hwsave>Speichern</button></div>`;
@@ -299,12 +356,12 @@ const UntisUI = (() => {
       c = U.configure();
     cur = null;
     d.className = 'un';
-    d.innerHTML = `<h3>Bei Untis anmelden</h3><div class=dbody><p class=d>Passwort für <b>${esc(c.user)}</b>. Es wird nicht gespeichert und nur für diese Anmeldung gebraucht.</p><input type=password id=up autocomplete=current-password placeholder="Passwort"></div><div class=bar><button type=button class=bt data-u=x>Abbrechen</button><button type=button class="bt pr" data-u=pwgo>Abgleichen</button></div>`;
+    d.innerHTML = `<h3>Bei Untis anmelden</h3><div class=dbody><p class=d>Untis-Passwort für <b>${esc(c.user)}</b>. Es wird nicht gespeichert und nur für diese Anmeldung gebraucht.</p><input type=password id=up autocomplete=current-password placeholder="Passwort"></div><div class=bar><button type=button class=bt data-u=x>Abbrechen</button><button type=button class="bt pr" data-u=pwgo>Abgleichen</button></div>`;
     if (!d.open) d.showModal();
     $('#up').focus();
   }
 
-  // ---------- Abgleich ----------
+  // ---------- Verbindung und CSP ----------
   // CSP der Seite: erlaubt sie Verbindungen zu dieser Adresse? (connect-src 'none' sperrt alles)
   function cspAllows(url) {
     let u;
@@ -331,61 +388,14 @@ const UntisUI = (() => {
       });
   }
   const proxyUrl = (v) => String(v || '').trim().replace(/\/+$/, '');
-  const cspHint = (p) => `Die Seite darf diese Adresse nicht aufrufen (Content-Security-Policy). Ändere in index.html bei connect-src 'none' auf: connect-src ${p}`;
-
-  function paintBusy() {
-    const b = U.status().busy;
-    document.querySelectorAll('[data-u=sync],[data-u=dosync]').forEach((x) => {
-      x.disabled = b;
-      if (b) x.dataset.busy = '1';
-      else delete x.dataset.busy;
-    });
-  }
-  async function doSync(pass) {
-    if (U.status().busy) return;
-    const c = U.configure();
-    msg = null;
-    if (c.proxy && !cspAllows(proxyUrl(c.proxy))) {
-      msg = { c: 'err', t: cspHint(proxyUrl(c.proxy)) };
-      return redraw();
-    }
-    paintBusy();
-    let again = false;
-    try {
-      const r = await U.sync({ pass });
-      pw = '';
-      msg = { c: r.warn.length ? 'warn' : 'ok', t: `${r.lessons} Stunden und ${r.homework} Hausaufgaben abgeglichen.${r.warn.length ? ' ' + r.warn.join(' ') : ''}` };
-    } catch (e) {
-      msg = { c: 'err', t: (e && e.message) || 'Der Abgleich ist fehlgeschlagen.' };
-      if (e && e.code === 'NEED_LOGIN' && c.user && view === 'plan') again = true;
-      if (e && e.code === 'AUTH') pw = '';
-    }
-    paintBusy();
-    if (again) {
-      msg = null;
-      return askPass();
-    }
-    redraw();
-  }
-  function quick() {
-    const c = U.configure();
-    if (!c.proxy || !c.server || !c.school || !c.user) {
-      view = 'setup';
-      msg = { c: 'warn', t: 'Trag zuerst Adresse, Schule, Benutzername und Proxy ein.' };
-      return redraw();
-    }
-    if (U.status().connected) doSync();
-    else askPass();
-  }
-  const redraw = () => {
-    if (active() && !dlg().open) render();
-  };
+  const cspHint = (p) => `Die Seite darf diese Adresse nicht aufrufen (Content-Security-Policy). Ändere in index.html bei connect-src auf: connect-src ${p}`;
+  const nerr = (code, m) => Object.assign(new Error(m), { code });
 
   // Erreichbarkeit und erlaubte Herkunft des Workers prüfen (Route /ping des Workers)
   async function pcheck(raw) {
     const base = proxyUrl(raw),
       o = location.origin;
-    if (!base) return ['err', 'Trag zuerst die Proxy-Adresse ein.'];
+    if (!base) return ['err', 'Trag zuerst die Worker-Adresse ein.'];
     if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(base)) return ['err', 'Die Adresse muss mit https:// beginnen und darf keinen Pfad haben, zum Beispiel https://untis.meinname.workers.dev'];
     if (o === 'null' || location.protocol === 'file:') return ['err', 'Die Seite läuft als lokale Datei. Der Worker lässt nur Aufrufe von der GitHub-Pages-Adresse zu (oder von localhost, wenn du es in OK_ORIGINS einträgst).'];
     if (!cspAllows(base)) return ['err', cspHint(base)];
@@ -402,38 +412,185 @@ const UntisUI = (() => {
     return ['err', `Unerwartete Antwort vom Worker (Status ${r.status}). Ist die Adresse wirklich dein Untis-Worker?`];
   }
 
+  // ---------- Abgleich ----------
+  // Kalender-Link (Untis → Profil → Freigaben → Kalender publizieren) → Adresse über den Worker
+  function icalCheck(link) {
+    const c = U.configure();
+    let u;
+    try {
+      u = new URL(String(link).trim().replace(/^webcal:/i, 'https:'));
+    } catch (e) {
+      return { err: 'Das ist kein Link. Kopiere ihn aus Untis (Profil → Freigaben → Kalender publizieren).' };
+    }
+    if (u.protocol !== 'https:' || u.hostname !== c.server) return { err: `Der Link muss von ${c.server} stammen.` };
+    if (!/^\/WebUntis\//i.test(u.pathname)) return { err: 'Das sieht nicht nach einem Untis-Kalenderlink aus (Pfad /WebUntis/…).' };
+    return { url: proxyUrl(c.proxy) + '/' + u.hostname + u.pathname + u.search };
+  }
+  async function syncIcal(link) {
+    const x = icalCheck(link);
+    if (x.err) throw nerr('ICS', x.err);
+    let r;
+    try {
+      r = await fetch(x.url, { credentials: 'omit', cache: 'no-store' });
+    } catch (e) {
+      throw nerr('NET', 'Keine Verbindung zum Worker. Internet, Worker-Adresse und Freigabe (CSP, OK_ORIGINS) prüfen.');
+    }
+    if (!r.ok) throw nerr('HTTP', 'Untis oder der Worker antwortet mit Fehler ' + r.status + '. Ist der Kalender in Untis noch veröffentlicht?');
+    const text = await r.text();
+    if (!/BEGIN:VCALENDAR/.test(text)) throw nerr('ICS', 'Der Link liefert keinen Kalender. Veröffentliche den Kalender in Untis neu und kopiere den neuen Link.');
+    return U.importIcs(text);
+  }
+  const mcfg = () => {
+    const c = U.configure();
+    return { proxy: proxyUrl(c.proxy), server: c.server, school: c.school, user: ux().mUser, key: keyGet() };
+  };
+  async function syncHomework() {
+    const t = U.util.today(),
+      r = await UM.homework(mcfg(), U.util.add(t, -14), U.util.add(t, 60));
+    U.ingest({ homework: r.homework }, { src: 'mobile' });
+    return r;
+  }
+
+  function paintBusy() {
+    const b = uiBusy || U.status().busy;
+    document.querySelectorAll('[data-u=sync],[data-u=dosync],[data-u=pwsync]').forEach((x) => {
+      x.disabled = b;
+      if (b) x.dataset.busy = '1';
+      else delete x.dataset.busy;
+    });
+  }
+  const msOk = () => {
+    const x = ux();
+    return !!(x.ical || (x.mUser && keyGet()));
+  };
+  // Zwei Wege:  Microsoft-Konto: Kalender-Link (Stundenplan) + Untis-Mobile-Schlüssel (Hausaufgaben), kein Passwort.
+  //             o.pw / o.pass: Anmeldung mit Untis-Passwort (nur für Konten ohne Microsoft-Anmeldung).
+  async function doSync(o) {
+    o = o || {};
+    if (uiBusy || U.status().busy) return;
+    const c = U.configure(),
+      x = ux(),
+      byPw = !!(o.pw || o.pass != null),
+      good = [],
+      bad = [];
+    let again = false;
+    msg = null;
+    if (!byPw && !msOk()) {
+      msg = { c: 'warn', t: 'Trag zuerst den Kalender-Link und/oder den Untis-Mobile-Schlüssel ein.' };
+      return redraw();
+    }
+    if (!cspAllows(proxyUrl(c.proxy))) {
+      msg = { c: 'err', t: cspHint(proxyUrl(c.proxy)) };
+      return redraw();
+    }
+    uiBusy = true;
+    paintBusy();
+    const run = async (name, f) => {
+      try {
+        const r = await f();
+        good.push(name + ': ' + r.t);
+        if (r.w) bad.push(name + ': ' + r.w);
+      } catch (e) {
+        bad.push(name + ': ' + ((e && e.message) || 'Fehler'));
+        if (e && e.code === 'NEED_LOGIN' && byPw) again = true;
+        if (e && e.code === 'AUTH') pw = '';
+      }
+    };
+    if (byPw) {
+      await run('Untis', async () => {
+        const r = await U.sync({ pass: o.pass });
+        pw = '';
+        return { t: `${r.lessons} Stunden, ${r.homework} Hausaufgaben`, w: r.warn.join(' ') };
+      });
+    } else {
+      if (x.ical) await run('Stundenplan', async () => ({ t: (await syncIcal(x.ical)) + ' Stunden' }));
+      if (x.mUser && keyGet()) {
+        await run('Hausaufgaben', async () => {
+          const r = await syncHomework();
+          return { t: String(r.homework.filter(vis).length), w: r.warn.join(' ') }; // ohne Überfälliges, wie in der Anzeige
+        });
+      }
+    }
+    uiBusy = false;
+    paintBusy();
+    if (again) {
+      msg = null;
+      return askPass();
+    }
+    msg = bad.length ? { c: good.length ? 'warn' : 'err', t: [...good, ...bad].join(' · ') } : { c: 'ok', t: good.join(' · ') + ' abgeglichen.' };
+    redraw();
+  }
+  function quick() {
+    if (msOk()) return doSync();
+    if (U.configure().user) return U.status().connected ? doSync({ pw: true }) : askPass();
+    view = 'setup';
+    msg = { c: 'warn', t: 'Richte zuerst den Kalender-Link oder den Untis-Mobile-Schlüssel ein.' };
+    redraw();
+  }
+  const redraw = () => {
+    if (active() && !dlg().open) render();
+  };
+
+  // Schlüssel aus dem Eingabefeld übernehmen: reiner Schlüssel oder der ganze untis://-Link
+  function saveKey(v) {
+    v = String(v || '').trim();
+    const q = UM.parseQr(v),
+      k = q ? q.key : v.replace(/[\s-]/g, '').toUpperCase();
+    if (!k) return null;
+    UM.b32(k); // wirft, wenn der Schlüssel nicht gültig aussieht
+    keySet(k);
+    if (q && q.user) uxSet({ mUser: q.user });
+    return { user: q && q.user };
+  }
+
   // ---------- Einrichten ----------
   function setup() {
     const c = U.configure(),
       s = U.status(),
+      x = ux(),
+      hasKey = !!keyGet(),
       um = U.unmapped(),
       names = [...new Set([...um, ...Object.keys(c.subjectMap)])].sort((a, b) => a.localeCompare(b, 'de')),
       o = location.origin,
       gh = /\.github\.io$/i.test(location.hostname),
       p = proxyUrl(c.proxy),
       pOk = !p || cspAllows(p),
-      url = c.server ? `https://${c.server}/WebUntis/?school=${c.school}` : '',
-      m = msg ? `<div class="un-msg ${msg.c}" role=status id=us-msg><span>${esc(msg.t)}</span></div>` : '<div id=us-msg></div>';
+      busy = uiBusy || s.busy,
+      ic = x.ical ? icalCheck(x.ical) : null,
+      m = msg ? `<div class="un-msg ${msg.c}" role=status id=us-msg><span>${esc(msg.t)}</span></div>` : '<div id=us-msg></div>',
+      groups = [...new Set(US.choices().map((q) => q[2]))],
+      selOpts = (cu) => `<option value="">nicht zugeordnet</option>${groups.map((g) => `<optgroup label="${esc(g)}">${US.choices().filter((q) => q[2] === g).map(([id, n]) => `<option value="${esc(id)}"${cu === id ? ' selected' : ''}>${esc(n)}</option>`).join('')}</optgroup>`).join('')}`;
     return `<div class=g><div class=un-nav><button type=button class=bt data-u=plan>‹ Plan</button><div class=wk><b>Untis einrichten</b></div></div>${m}</div>
-<div class=g><h2>Live-Abruf</h2><p class=d>Holt Stundenplan und Hausaufgaben direkt aus WebUntis, über deinen eigenen Cloudflare-Worker. Das Passwort wird nie gespeichert.</p>
-<h4>WebUntis-Adresse (aus der Browser-Leiste kopieren)</h4><input type=url id=us-url data-uf=url placeholder="https://xyz.webuntis.com/WebUntis/?school=…" value="${esc(url)}" autocomplete=off autocapitalize=off>
-<small id=us-info class=d>${c.server ? 'Server: ' + esc(c.server) : 'Noch keine Adresse.'}</small>
-<h4>Schulname (Wert hinter school=)</h4><input id=us-sch data-uf=school value="${esc(c.school)}" autocomplete=off autocapitalize=off>
-<h4>Benutzername</h4><input id=us-usr data-uf=user value="${esc(c.user)}" autocomplete=username autocapitalize=off>
-<h4>Passwort (nur für diesen Abgleich)</h4><input type=password id=us-pw data-uf=pw value="${esc(pw)}" autocomplete=current-password>
-<h4>Proxy-Adresse (dein Worker)</h4><input type=url id=us-px data-uf=proxy placeholder="https://untis.meinname.workers.dev" value="${esc(c.proxy)}" autocomplete=off autocapitalize=off>
-<small class=d>Diese Seite: ${esc(o)}${gh ? ' (GitHub Pages)' : ''}. Genau diese Adresse (ohne Pfad) muss im Worker bei OK_ORIGINS stehen.</small>
+<div class=g><h2>Verbindung</h2><p class=d>Untis von Gaesdonck (${esc(c.server || DEFAULTS.server)}). Server, Schule und Worker sind schon eingetragen.</p>
+<div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=ptest>Verbindung prüfen</button></div>
 <small id=us-csp class="d bad" style="display:block;margin-top:4px">${pOk ? '' : esc(cspHint(p))}</small>
-<h4>Wochen im Voraus</h4><select data-uf=weeks>${[1, 2, 3, 4, 6, 8].map((n) => `<option value="${n}"${c.weeks == n ? ' selected' : ''}>${n}</option>`).join('')}</select>
-<div class=bar style="justify-content:flex-start;flex-wrap:wrap"><button type=button class=bt data-u=ptest>Proxy prüfen</button><button type=button class="bt pr" data-u=dosync${s.busy ? ' data-busy=1 disabled' : ''}>Jetzt abgleichen</button>${s.connected ? '<button type=button class=bt data-u=logout>Abmelden</button>' : ''}</div>
-<details><summary>So richtest du den Worker ein</summary><ol class=un-steps><li>Bei Cloudflare ein kostenloses Konto anlegen, dann <i>Workers &amp; Pages → Create → Worker</i>.</li><li>Den Inhalt von <code>worker/untis-worker.js</code> einfügen. Bei <code>OK_ORIGINS</code> muss <code>${esc(o)}</code> stehen. Deployen.</li><li>Die Worker-Adresse oben eintragen und auf <i>Proxy prüfen</i> tippen.</li><li>In <code>index.html</code> beim Content-Security-Policy-Tag <code>connect-src 'none'</code> durch <code id=us-cs>connect-src ${esc(p || 'https://DEIN-WORKER.workers.dev')}</code> ersetzen und die Datei hochladen.</li></ol><small class=d>Der Worker läuft bei Cloudflare, nicht auf GitHub Pages. GitHub Pages liefert nur die Seite aus, der Browser ruft den Worker von dort aus auf. Der Worker sieht dein Untis-Passwort beim Anmelden: nur den eigenen verwenden und die Adresse nicht weitergeben.</small></details></div>
-<div class=g><h2>Oder: ICS-Datei</h2><p class=d>Ohne Worker und ohne Änderung am CSP. Importiert nur den Stundenplan, keine Hausaufgaben (die trägst du selbst ein). Die Datei wird nur in deinem Browser gelesen.</p><div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=ics>ICS-Datei wählen</button></div></div>
-${
-  names.length
-    ? `<div class=g><h2>Fächer zuordnen</h2><p class=d>Untis-Namen, die der Rechner nicht erkennt. Mit der Zuordnung bekommt ein Fach seine feste Farbe, und Stunden und Hausaufgaben gehören zusammen.</p>${names.map((n) => `<div class=ir><span class=un-map>${esc(n)}</span><select data-uf=map data-n="${esc(n)}" aria-label="Fach für ${esc(n)}"><option value="">nicht zugeordnet</option>${S.map(([id, name]) => `<option value="${id}"${c.subjectMap[n] === id ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></div>`).join('')}</div>`
-    : ''
-}
-<div class=g><h2>Daten</h2><p class=d>${s.lessons} Stunden und ${s.homework} Hausaufgaben gespeichert${s.lastSync ? ', Stand ' + stamp(s.lastSync) : ''}. Sie sind Teil der Sicherungsdatei im Menü (ohne Benutzername und Passwort).</p><div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=rmdata style="color:var(--no)">Alle Untis-Daten löschen</button></div></div>`;
+<details><summary>Erweitert (Server, Schule, Worker)</summary>
+<h4>Untis-Server</h4><input id=us-srv data-uf=server value="${esc(c.server)}" autocomplete=off autocapitalize=off>
+<h4>Schulname</h4><input id=us-sch data-uf=school value="${esc(c.school)}" autocomplete=off autocapitalize=off>
+<h4>Worker-Adresse</h4><input type=url id=us-px data-uf=proxy value="${esc(c.proxy)}" autocomplete=off autocapitalize=off>
+<small class=d>Diese Seite: ${esc(o)}${gh ? ' (GitHub Pages)' : ''}. Genau diese Adresse (ohne Pfad) steht im Worker bei OK_ORIGINS. Der Worker läuft bei Cloudflare, nicht auf GitHub Pages.</small>
+<h4>Wochen im Voraus (nur Anmeldung mit Passwort)</h4><select data-uf=weeks>${[1, 2, 3, 4, 6, 8].map((n) => `<option value="${n}"${c.weeks == n ? ' selected' : ''}>${n}</option>`).join('')}</select>
+</details></div>
+<div class=g><h2>Stundenplan</h2><p class=d>Mit deinem Microsoft-Konto brauchst du kein Passwort: Veröffentliche deinen Kalender in Untis und füge den Link hier ein.</p>
+<ol class=un-steps><li>Untis im Browser öffnen und mit Microsoft anmelden.</li><li><i>Profil → Freigaben → Kalender publizieren</i>, den Link kopieren.</li><li>Hier einfügen.</li></ol>
+<input type=url id=us-ical data-uf=ical placeholder="https://gaesdonck.webuntis.com/WebUntis/…" value="${esc(x.ical)}" autocomplete=off autocapitalize=off>
+<small id=us-ical-info class="d${ic && ic.err ? ' bad' : ''}">${ic ? (ic.err ? esc(ic.err) : 'Link erkannt.') : 'Der Link ist wie ein Passwort für deinen Stundenplan: nicht weitergeben.'}</small></div>
+<div class=g><h2>Hausaufgaben</h2><p class=d>Dafür nutzt die App den Schlüssel der Untis-Mobile-App. Er funktioniert auch mit Microsoft-Anmeldung.</p>
+<ol class=un-steps><li>Untis im Browser öffnen.</li><li><i>Profil → Freigaben → Zugriff über Untis Mobile → QR-Code anzeigen</i>.</li><li>Die Felder <i>Benutzer</i> und <i>Schlüssel</i> hier eintragen.</li></ol>
+<h4>Benutzer</h4><input id=us-mu data-uf=muser value="${esc(x.mUser)}" autocomplete=off autocapitalize=off>
+<h4>Schlüssel</h4><input type=password id=us-mk data-uf=mkey placeholder="${hasKey ? 'gespeichert, zum Ersetzen neu eingeben' : 'Schlüssel aus dem QR-Dialog'}" autocomplete=off autocapitalize=off>
+<small id=us-mk-info class=d>${hasKey ? 'Schlüssel ist auf diesem Gerät gespeichert. ' : ''}Er bleibt nur auf diesem Gerät (nicht in der Sicherungsdatei) und gibt Zugriff auf deine Untis-Daten: nicht weitergeben.</small>
+<div class=bar style="justify-content:flex-start;flex-wrap:wrap"><button type=button class=bt data-u=mtest>Schlüssel testen</button>${hasKey ? '<button type=button class=bt data-u=mkeyrm>Schlüssel entfernen</button>' : ''}</div></div>
+<div class=g><div class=bar style="justify-content:flex-start"><button type=button class="bt pr" data-u=dosync${busy ? ' data-busy=1 disabled' : ''}>Jetzt abgleichen</button></div>
+<details><summary>Andere Wege</summary>
+<h4>ICS-Datei</h4><p class=d>Nur Stundenplan, einmalig. Die Datei wird nur in deinem Browser gelesen.</p><div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=ics>ICS-Datei wählen</button></div>
+<h4>Mit Untis-Passwort (nur ohne Microsoft-Anmeldung)</h4>
+<input id=us-usr data-uf=user placeholder="Untis-Benutzername" value="${esc(c.user)}" autocomplete=username autocapitalize=off>
+<input type=password id=us-pw data-uf=pw placeholder="Passwort (wird nicht gespeichert)" value="${esc(pw)}" autocomplete=current-password style="margin-top:8px">
+<div class=bar style="justify-content:flex-start;flex-wrap:wrap"><button type=button class=bt data-u=pwsync${busy ? ' data-busy=1 disabled' : ''}>Mit Passwort abgleichen</button>${s.connected ? '<button type=button class=bt data-u=logout>Abmelden</button>' : ''}</div>
+</details></div>
+<div class=g><h2>Fächer zuordnen</h2><p class=d>Die App erkennt Kürzel wie <i>D G1</i>, <i>E5 L1</i> oder <i>PKKU</i> selbst: Grundkurse eines Fachs gehören zusammen, Leistungskurse sind eigene Gruppen. ${names.length ? 'Nicht erkannte Namen kannst du hier von Hand zuordnen.' : 'Im Moment ist alles erkannt.'}</p>${names.map((n) => `<div class=ir><span class=un-map>${esc(n)}</span><select data-uf=map data-n="${esc(n)}" aria-label="Fach für ${esc(n)}">${selOpts(own(c.subjectMap, n) ? c.subjectMap[n] : '')}</select></div>`).join('')}</div>
+<div class=g><h2>Daten</h2><p class=d>${s.lessons} Stunden und ${hws().length} Hausaufgaben gespeichert${s.lastSync ? ', Stand ' + stamp(s.lastSync) : ''}. Sie sind Teil der Sicherungsdatei im Menü (ohne Zugangsdaten).</p><div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=rmdata style="color:var(--no)">Alle Untis-Daten löschen</button></div></div>`;
   }
 
   // ---------- Ereignisse ----------
@@ -442,6 +599,14 @@ ${
     msg = null;
     render();
     scrollTo(0, 0);
+  };
+  const say = (c, t) => {
+    msg = { c, t };
+    const b = $('#us-msg');
+    if (b) {
+      b.className = 'un-msg ' + c;
+      b.textContent = t;
+    }
   };
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-u]');
@@ -470,30 +635,49 @@ ${
       msg = null;
       render();
     } else if (a == 'sync') quick();
-    else if (a == 'dosync') {
+    else if (a == 'dosync') doSync();
+    else if (a == 'pwsync') {
       const i = $('#us-pw');
       if (i) pw = i.value;
-      doSync(pw);
+      if (!U.configure().user) return say('warn', 'Trag zuerst den Untis-Benutzernamen ein.');
+      if (!pw) return say('warn', 'Gib zuerst das Untis-Passwort ein.');
+      doSync({ pass: pw });
     } else if (a == 'logout') U.logout().then(render);
     else if (a == 'ptest') {
-      const box = $('#us-msg'),
-        i = $('#us-px');
+      const i = $('#us-px');
       if (i) U.configure({ proxy: i.value });
-      box.className = 'un-msg';
-      box.textContent = 'Prüfe …';
-      pcheck(i ? i.value : U.configure().proxy).then(([c, tx]) => {
-        msg = { c, t: tx };
-        const b = $('#us-msg');
-        if (b) {
-          b.className = 'un-msg ' + c;
-          b.textContent = tx;
+      say('', 'Prüfe …');
+      pcheck(i ? i.value : U.configure().proxy).then(([c, tx]) => say(c, tx));
+    } else if (a == 'mtest') {
+      const kv = $('#us-mk'),
+        mu = $('#us-mu');
+      try {
+        if (kv && kv.value.trim()) {
+          const r = saveKey(kv.value);
+          kv.value = '';
+          if (r && r.user && mu) mu.value = r.user;
         }
-      });
+      } catch (x) {
+        return say('err', x.message);
+      }
+      if (mu) uxSet({ mUser: mu.value.trim() });
+      const c = mcfg();
+      if (!c.key) return say('warn', 'Trag zuerst den Schlüssel ein.');
+      if (!c.user) return say('warn', 'Trag zuerst den Benutzer ein.');
+      if (!cspAllows(c.proxy)) return say('err', cspHint(c.proxy));
+      say('', 'Prüfe Anmeldung …');
+      UM.test(c).then(
+        (r) => say('ok', 'Anmeldung klappt' + (r.name ? ' (' + r.name + ')' : '') + '. Jetzt kannst du abgleichen.'),
+        (er) => say('err', (er && er.message) || 'Die Anmeldung ist fehlgeschlagen.'),
+      );
+    } else if (a == 'mkeyrm') {
+      keySet('');
+      render();
     } else if (a == 'ics') $('#uf').click();
     else if (a == 'ls') sheet(d.k, { date: d.d, id: d.id, start: d.s });
     else if (a == 'sub') sheet(d.k);
     else if (a == 'chk') {
-      const h = U.homework().find((x) => x.id === d.id);
+      const h = hws().find((x) => x.id === d.id);
       if (h) U.setDone(d.id, !h.done);
     } else if (a == 'hwall') {
       hwAll = d.v == '1';
@@ -505,12 +689,13 @@ ${
     } else if (a == 'hwsave') {
       const k = $('#ua').value,
         text = $('#ut').value.trim(),
-        due = $('#ud').value;
+        due = $('#ud').value,
+        nm = US.name(k);
       if (!text) {
         $('#ut').focus();
         return;
       }
-      U.hwAdd(own(NM, k) ? { sub: k, text, due } : { sub: '', subName: k, text, due });
+      U.hwAdd(nm !== k ? { sub: k, subName: nm, text, due } : { sub: '', subName: k, text, due });
       sheet(k);
     } else if (a == 'hwdel') {
       if (confirm('Diese Hausaufgabe löschen?')) U.hwRemove(d.id);
@@ -518,10 +703,12 @@ ${
       const v = $('#up').value;
       if (!v) return $('#up').focus();
       dlg().close();
-      doSync(v);
+      doSync({ pass: v });
     } else if (a == 'x') dlg().close();
-    else if (a == 'rmdata' && confirm('Stundenplan, Hausaufgaben und Untis-Einstellungen auf diesem Gerät löschen?')) {
+    else if (a == 'rmdata' && confirm('Stundenplan, Hausaufgaben, Kalender-Link und Schlüssel auf diesem Gerät löschen?')) {
       U.reset();
+      wipe();
+      defaults();
       pw = '';
       msg = null;
       render();
@@ -561,20 +748,37 @@ ${
       return;
     }
     if (!f || f == 'pw') return;
-    if (f == 'url') {
-      let v = t.value.trim();
-      if (v && !/^[a-z]+:\/\//i.test(v)) v = 'https://' + v;
-      U.configure({ url: v });
-      const c = U.configure();
-      $('#us-sch').value = c.school;
-      $('#us-info').textContent = c.server ? 'Server: ' + c.server : 'Die Adresse wurde nicht erkannt.';
-    } else if (f == 'school') U.configure({ school: t.value.trim() });
-    else if (f == 'user') U.configure({ user: t.value.trim() });
-    else if (f == 'proxy') {
+    if (f == 'ical') {
+      const v = t.value.trim();
+      uxSet({ ical: v });
+      const i = v ? icalCheck(v) : null,
+        el = $('#us-ical-info');
+      el.textContent = i ? (i.err ? i.err : 'Link erkannt.') : 'Der Link ist wie ein Passwort für deinen Stundenplan: nicht weitergeben.';
+      el.classList.toggle('bad', !!(i && i.err));
+    } else if (f == 'muser') uxSet({ mUser: t.value.trim() });
+    else if (f == 'mkey') {
+      const el = $('#us-mk-info');
+      try {
+        const r = saveKey(t.value);
+        if (!r) return;
+        if (r.user) $('#us-mu').value = r.user;
+        t.value = '';
+        t.placeholder = 'gespeichert, zum Ersetzen neu eingeben';
+        el.textContent = 'Schlüssel gespeichert' + (r.user ? ' (Benutzer übernommen)' : '') + '. Er bleibt nur auf diesem Gerät.';
+        el.classList.remove('bad');
+      } catch (x) {
+        el.textContent = x.message;
+        el.classList.add('bad');
+      }
+    } else if (f == 'user') U.configure({ user: t.value.trim() });
+    else if (f == 'server' || f == 'school') {
+      U.configure({ [f]: t.value.trim() });
+      const i = $('#us-ical');
+      if (i && i.value) i.dispatchEvent(new Event('change', { bubbles: true }));
+    } else if (f == 'proxy') {
       U.configure({ proxy: t.value });
       const p = proxyUrl(t.value);
       $('#us-csp').textContent = p && !cspAllows(p) ? cspHint(p) : '';
-      $('#us-cs').textContent = 'connect-src ' + (p || 'https://DEIN-WORKER.workers.dev');
     } else if (f == 'weeks') U.configure({ weeks: +t.value || 4 });
     else if (f == 'map') {
       const m = Object.assign({}, U.configure().subjectMap);
@@ -598,5 +802,5 @@ ${
     if (active() && view == 'plan') render();
   });
 
-  return { head, view: view_, FROM, TO };
+  return { head, view: view_, wipe, defaults, FROM, TO };
 })();

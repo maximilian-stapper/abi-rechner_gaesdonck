@@ -25,7 +25,9 @@
  *                  slots(week) · next(now)
  *   Hausaufgaben   homework({open, sub, from, to}) · homeworkBySubject(o) ·
  *                  setDone(id, bool) · hwAdd(o) · hwRemove(id)
- *   Fächer         mapSubject(name) · unmapped()   (Untis-Name → Schlüssel aus S/NM)
+ *   Fächer         mapSubject(name, langname) · unmapped() · setResolver(fn)
+ *                  (Untis-Name → Schlüssel aus S/NM; setResolver schaltet eine genauere Erkennung davor,
+ *                   siehe untis-subjects.js)
  *   Daten          backup() · restore(obj) · reset()
  *   Hilfen         util.{iso, add, mon, today} · hooks.{lesson, homework, ics} · debug
  *
@@ -122,12 +124,21 @@ const Untis = (() => {
   );
   // 'D-GK1', 'M LK2', 'Bio 3' → 'd', 'm', 'bio'
   const base = (s) => String(s).toLowerCase().replace(/\(.*?\)/g, '').trim().split(/[\s\-_./\d]/)[0];
-  const sub = (raw) => {
-    raw = String(raw || '').trim();
+  // Optionale Zusatz-Erkennung (z. B. UntisSubjects.resolve): (Kürzel, Langname) → Schlüssel oder ''.
+  // Eigene Zuordnungen (subjectMap) gehen vor, die Standardregeln unten greifen nur, wenn sie nichts findet.
+  let resolver = null;
+  const sub = (raw, long) => {
+    raw = String(raw || '').trim() || String(long || '').trim();
     if (!raw) return '';
     const lo = raw.toLowerCase(), b = base(raw), m = D.cfg.subjectMap;
     const k = Object.keys(m).find((x) => x.toLowerCase() === lo || x.toLowerCase() === b);
     if (k) return m[k];
+    if (resolver) {
+      try {
+        const r = resolver(raw, long);
+        if (r) return r;
+      } catch (e) {}
+    }
     if (DEF[lo] || DEF[b]) return DEF[lo] || DEF[b];
     if (typeof NM !== 'undefined') {
       const e = Object.entries(NM).find(([, n]) => n.toLowerCase().replace(/\(.*?\)/g, '').trim() === lo);
@@ -136,7 +147,7 @@ const Untis = (() => {
     return '';
   };
   const remap = () => {
-    Object.values(D.days).forEach((a) => a.forEach((l) => (l.sub = sub(l.subName))));
+    Object.values(D.days).forEach((a) => a.forEach((l) => (l.sub = sub(l.subName, l.subLong))));
     D.hw.forEach((h) => h.src !== 'manual' && (h.sub = sub(h.subName)));
   };
   const unmapped = () => {
@@ -152,7 +163,7 @@ const Untis = (() => {
       { id: '', date: '', start: '', end: '', subName: '', subLong: '', teacher: '', room: '', cls: '', status: 'ok', note: '', src: 'ext' },
       o,
     );
-    if (l.sub == null) l.sub = sub(l.subName || l.subLong);
+    if (l.sub == null) l.sub = sub(l.subName, l.subLong);
     if (!l.id) l.id = l.src + '|' + l.date + '|' + l.start + '|' + l.subName;
     return l;
   };
@@ -530,10 +541,15 @@ const Untis = (() => {
     try { localStorage.removeItem(KEY); } catch (e) {}
     emit('change');
   };
+  const setResolver = (fn) => {
+    resolver = typeof fn === 'function' ? fn : null;
+    remap();
+    save();
+  };
   const use = (name, provider) => { P[name] = Object.assign({ name }, provider); }; // provider.fetch({cfg,from,to,pass,hwFrom,hwTo}) → {lessons?, homework?, warn?}
 
   const api = {
-    configure, status, on, sync, logout, importIcs, ingest, use,
+    configure, status, on, sync, logout, importIcs, ingest, use, setResolver,
     day, week, range, slots, next,
     homework, homeworkBySubject, setDone, hwAdd, hwRemove,
     mapSubject: sub, unmapped, backup, restore, reset,
