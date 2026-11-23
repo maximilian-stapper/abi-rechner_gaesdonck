@@ -213,6 +213,13 @@ const UntisUI = (() => {
   const STX = { cancelled: 'entfällt', changed: 'geändert', exam: 'Klausur' },
     PLAN_HUE = 212; // alle normalen Stunden im Wochenplan in einem ruhigen Blau (passend zu --b)
 
+  // Klausurtage laut Klausurplan: nur an Tagen mit Stunden und nur, solange Untis die Klausur noch nicht selbst zeigt
+  const kpBase = (k) => (k === 'e9' ? 'es' : k); // Untis fasst beide Spanisch-Kurse zusammen
+  function kpDay(d) {
+    if (!d.lessons.length) return [];
+    return kpList.filter((e) => e.date === d.date && !d.lessons.some((l) => l.status === 'exam' && US.split(key(l)).base === kpBase(e.k)));
+  }
+
   function grid(w, open) {
     const td = U.util.today(),
       H = Math.round((T - F) * PX),
@@ -223,8 +230,15 @@ const UntisUI = (() => {
     for (let h = Math.ceil(F / 60); h * 60 <= T; h++) hl.push(h);
     const axis = hl.map((h) => `<i style="top:${y(h * 60)}px">${h}:00</i>`).join(''),
       lines = hl.map((h) => `<i class=hl style="top:${y(h * 60)}px"></i>`).join(''),
+      marks = new Map(w.days.map((d) => [d.date, kpDay(d)])),
       heads = w.days
-        .map((d) => `<div class="un-dh${d.date === td ? ' today' : ''}"><b>${WD[d.wd]}</b><small>${P(d.date).getDate()}.</small></div>`)
+        .map((d) => {
+          const ex = marks.get(d.date),
+            tags = ex.length
+              ? `<span class=un-kts>${ex.map((e) => `<button type=button class=un-kt data-u=kpx data-i=${kpList.indexOf(e)} aria-label="${esc('Laut Klausurplan: ' + US.name(kpKey(e)) + (e.dur ? ', ' + e.dur + ' Minuten' : ', mündlich') + (e.unsure ? ', falls dein Kurs im Band ' + e.band + ' liegt' : ''))}">${esc(US.short(e.k) || e.k)}${e.unsure ? '?' : ''}</button>`).join('')}</span>`
+              : '';
+          return `<div class="un-dh${d.date === td ? ' today' : ''}"><b>${WD[d.wd]}</b><small>${P(d.date).getDate()}.</small>${tags}</div>`;
+        })
         .join(''),
       now = new Date(),
       nowM = now.getHours() * 60 + now.getMinutes(),
@@ -251,7 +265,7 @@ const UntisUI = (() => {
             })
             .join('');
           const line = d.date === td && nowM >= F && nowM <= T ? `<i class=un-now style="top:${y(nowM)}px"></i>` : '';
-          return `<div class="un-col${d.date === td ? ' today' : ''}" style="height:${H}px">${lines}${blocks}${line}</div>`;
+          return `<div class="un-col${d.date === td ? ' today' : ''}${marks.get(d.date).length ? ' kp-on' : ''}" style="height:${H}px">${lines}${blocks}${line}</div>`;
         })
         .join('');
     return {
@@ -268,7 +282,8 @@ const UntisUI = (() => {
       open = new Map(),
       reg = subjects(),
       has = s.lessons > 0 || s.homework > 0,
-      weekLessons = w.days.reduce((n, d) => n + d.lessons.length, 0);
+      weekLessons = w.days.reduce((n, d) => n + d.lessons.length, 0),
+      kp = kpData();
     hw.filter((h) => !h.done).forEach((h) => open.set(key(h), (open.get(key(h)) || 0) + 1));
 
     const banner = msg
@@ -316,7 +331,7 @@ const UntisUI = (() => {
         .join('');
     const hwCard = `<div class=g><div class=un-hh><h2>Hausaufgaben</h2><div class=un-tg role=group aria-label="Anzeige"><button type=button data-u=hwall data-v=0 aria-pressed="${!hwAll}" class="${!hwAll ? 'on' : ''}">Offen</button><button type=button data-u=hwall data-v=1 aria-pressed="${hwAll}" class="${hwAll ? 'on' : ''}">Alle</button></div></div>${chips ? `<div class=un-chips>${chips}</div>` : ''}${list.length ? list.map((h) => hwItem(h, true, reg)).join('') : `<p class=d style="margin:10px 0">${hwAll ? 'Noch keine Hausaufgaben.' : 'Keine offenen Hausaufgaben.'}</p>`}<div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=hwnew data-k="">+ Hausaufgabe</button></div></div>`;
 
-    return banner + first + nxt + planCard + kpCard(td) + hwCard + `<small class=d>Stundenplan und Hausaufgaben liegen nur in diesem Browser. Fremde Angaben (Räume, Lehrkräfte, Aufgaben) stammen aus Untis und sind ohne Gewähr.</small>`;
+    return banner + first + nxt + planCard + kpCard(td, kp) + hwCard + `<small class=d>Stundenplan und Hausaufgaben liegen nur in diesem Browser. Fremde Angaben (Räume, Lehrkräfte, Aufgaben) stammen aus Untis und sind ohne Gewähr.</small>`;
   }
 
   // ---------- Klausurplan (klausurplan.js + klausuren.js) ----------
@@ -366,13 +381,20 @@ const UntisUI = (() => {
       return n === 0 ? 'heute' : n === 1 ? 'morgen' : 'in ' + n + ' Tagen';
     };
 
-  function kpCard(td) {
-    if (!KP || !KL) return '';
+  // Klausurplan für die aktuelle Person auswerten (einmal pro Anzeige, für Wochenplan und Karte)
+  function kpData() {
+    if (!KP || !KL) return null;
     const p = kpProfile(),
-      weeks = KL.build(KP, p),
+      weeks = KL.build(KP, p);
+    kpList = weeks.flatMap((w) => w.days.flatMap((d) => d.exams));
+    return { p, weeks };
+  }
+
+  function kpCard(td, kp) {
+    if (!kp) return '';
+    const { p, weeks } = kp,
       sem = p.stufe === 'EF' ? 'EF' : SEM[p.idx],
       toggle = `<div class=un-tg role=group aria-label="Stufe">${STUFEN.map((s) => `<button type=button data-u=kpst data-v=${s} aria-pressed="${s === p.stufe}" class="${s === p.stufe ? 'on' : ''}">${s}</button>`).join('')}</div>`;
-    kpList = weeks.flatMap((w) => w.days.flatMap((d) => d.exams));
     const upcoming = kpList.filter((e) => e.date >= td),
       nx = upcoming[0],
       noWritten = p.stufe !== 'EF' && !Object.values(p.cells).some((c) => c && (c[p.idx] === 'S' || c[p.idx] === 'LK'));
