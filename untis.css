@@ -849,3 +849,19 @@ button.kp-kw:hover {
   outline: 2px solid var(--b);
   outline-offset: 1px;
 }
+
+/* Hausaufgabe eintragen: Fälligkeit „Nächste Stunde“ oder Datum */
+#udm {
+  margin-bottom: 8px;
+}
+#udm button[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+.un-udn {
+  display: block;
+}
+.un-udn[hidden],
+#ud[hidden] {
+  display: none;
+}
