@@ -22,6 +22,21 @@
   background: rgba(255, 255, 255, 0.17);
   color: var(--t);
 }
+/* Drei Bereiche (Abi-Rechner | Untis | Klausuren): auf dem Handy enger, nie umbrechen */
+.seg button {
+  white-space: nowrap;
+}
+@media (max-width: 430px) {
+  .seg button {
+    padding: 6px 10px;
+  }
+}
+@media (max-width: 360px) {
+  .seg button {
+    padding: 6px 7px;
+    font-size: 14px;
+  }
+}
 .seg button:focus-visible,
 .ib:focus-visible,
 .un-ls:focus-visible,

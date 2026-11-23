@@ -1,8 +1,8 @@
 function render() {
   if (!st) return wiz();
   const top = `<div class=top>${UntisUI.head(tab)}<button class=bt data-a=menu aria-label=Menü>⋯</button></div>`;
-  if (tab == 'un') {
-    // Untis-Planer (untis-ui.js)
+  if (tab == 'un' || tab == 'kp') {
+    // Untis-Planer und Klausuren (untis-ui.js)
     $('#app').innerHTML = top + UntisUI.view();
     return;
   }
