@@ -158,13 +158,16 @@ const UntisUI = (() => {
     uiBusy = false,
     cur = null; // geöffnetes Fach-Blatt { k, ls }
 
-  const active = () => tab === 'un' && !!st;
+  const mine = (t) => t === 'un' || t === 'kp', // Tabs, die dieses Modul zeichnet: Untis und Klausuren
+    active = () => mine(tab) && !!st;
 
-  // ---------- Kopfzeile: Umschalter Abi-Rechner | Untis ----------
-  const head = (t) =>
-    `<div class=seg role=group aria-label="Bereich"><button type=button data-u=abi aria-pressed="${t !== 'un'}" class="${t !== 'un' ? 'on' : ''}">Abi-Rechner</button><button type=button data-u=un aria-pressed="${t === 'un'}" class="${t === 'un' ? 'on' : ''}">Untis</button></div>`;
+  // ---------- Kopfzeile: Umschalter Abi-Rechner | Untis | Klausuren ----------
+  const head = (t) => {
+    const b = (u, on, l) => `<button type=button data-u=${u} aria-pressed="${on}" class="${on ? 'on' : ''}">${l}</button>`;
+    return `<div class=seg role=group aria-label="Bereich">${b('abi', !mine(t), 'Abi-Rechner')}${b('un', t === 'un', 'Untis')}${b('kpt', t === 'kp', 'Klausuren')}</div>`;
+  };
 
-  const view_ = () => (view === 'setup' ? setup() : plan());
+  const view_ = () => (tab === 'kp' ? kpView() : view === 'setup' ? setup() : plan());
 
   // ---------- Hausaufgaben ----------
   function due(h) {
@@ -330,7 +333,7 @@ const UntisUI = (() => {
         .join('');
     const hwCard = `<div class=g><div class=un-hh><h2>Hausaufgaben</h2><div class=un-tg role=group aria-label="Anzeige"><button type=button data-u=hwall data-v=0 aria-pressed="${!hwAll}" class="${!hwAll ? 'on' : ''}">Offen</button><button type=button data-u=hwall data-v=1 aria-pressed="${hwAll}" class="${hwAll ? 'on' : ''}">Alle</button></div></div>${chips ? `<div class=un-chips>${chips}</div>` : ''}${list.length ? list.map((h) => hwItem(h, true, reg)).join('') : `<p class=d style="margin:10px 0">${hwAll ? 'Noch keine Hausaufgaben.' : 'Keine offenen Hausaufgaben.'}</p>`}<div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=hwnew data-k="">+ Hausaufgabe</button></div></div>`;
 
-    return banner + first + nxt + planCard + kpCard(td, kp) + hwCard + `<small class=d>Stundenplan und Hausaufgaben liegen nur in diesem Browser. Fremde Angaben (Räume, Lehrkräfte, Aufgaben) stammen aus Untis und sind ohne Gewähr.</small>`;
+    return banner + first + nxt + planCard + hwCard + `<small class=d>Stundenplan und Hausaufgaben liegen nur in diesem Browser. Fremde Angaben (Räume, Lehrkräfte, Aufgaben) stammen aus Untis und sind ohne Gewähr.</small>`;
   }
 
   // ---------- Klausurplan (klausurplan.js + klausuren.js) ----------
@@ -451,7 +454,7 @@ const UntisUI = (() => {
     const exp = upcoming.filter((e) => !e.unsure),
       skip = upcoming.length - exp.length,
       cal = `<div class=kp-cal><button type=button class="bt pr" data-u=kpics${exp.length ? '' : ' disabled'}>In meinen Kalender eintragen</button><small class=d>${exp.length ? `Lädt eine Kalenderdatei mit ${exp.length === 1 ? 'deiner nächsten Klausur' : `deinen ${exp.length} anstehenden Klausuren`}: ganztägige Termine mit Erinnerung am Vortag. Datei öffnen und alle hinzufügen, z. B. im Apple-Kalender.${skip ? ` ${skip} LK-Klausur${skip === 1 ? '' : 'en'} mit ? ${skip === 1 ? 'ist' : 'sind'} nicht dabei.` : ''}` : 'Keine anstehenden Klausuren zum Eintragen.'}</small></div>`;
-    return `<div class=g id=kp>${top}${next}${pastBtn}${grid}${unsure}<small class="d kp-nt">Tippe auf eine Klausur für Details und auf die KW, um die Woche oben im Stundenplan zu sehen. Der Vertretungsplan in WebUntis hat Vorrang.</small>${cal}</div>`;
+    return `<div class=g id=kp>${top}${next}${pastBtn}${grid}${unsure}<small class="d kp-nt">Tippe auf eine Klausur für Details und auf die KW, um die Woche im Untis-Stundenplan zu öffnen. Der Vertretungsplan in WebUntis hat Vorrang.</small>${cal}</div>`;
   }
 
   function kpSheet(e) {
@@ -479,12 +482,24 @@ const UntisUI = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
   // Woche oben im Stundenplan öffnen
+  // Eigener Tab „Klausuren“
+  function kpView() {
+    const kp = kpData();
+    return kp
+      ? kpCard(U.util.today(), kp)
+      : `<div class=g><h2>Klausuren</h2><p class=d>Für dieses Halbjahr ist noch kein Klausurplan hinterlegt.</p></div>`;
+  }
+  // Woche im Untis-Stundenplan öffnen (wechselt in den Untis-Tab)
   function kpWeek(w) {
     wk = w;
-    if (dlg().open) dlg().close(); // close zeichnet neu
-    else render();
+    tab = 'un';
+    view = 'plan';
+    msg = null;
+    if (dlg().open) dlg().close();
+    render();
     const el = $('#un-plan');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el) el.scrollIntoView({ block: 'start' });
+    else scrollTo(0, 0);
   }
 
   // ---------- Blätter (Dialog) ----------
@@ -829,9 +844,9 @@ const UntisUI = (() => {
     if (a == 'abi') {
       tab = lastTab;
       render();
-    } else if (a == 'un') {
-      if (tab !== 'un') lastTab = tab;
-      tab = 'un';
+    } else if (a == 'un' || a == 'kpt') {
+      if (!mine(tab)) lastTab = tab;
+      tab = a == 'un' ? 'un' : 'kp';
       view = 'plan';
       msg = null;
       render();

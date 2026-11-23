@@ -10,13 +10,40 @@
     <meta name="theme-color" content="#18181b" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src https://untis-worker.maximilian-stapper.workers.dev; object-src 'none'; base-uri 'none'; form-action 'none'"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://untis-worker.maximilian-stapper.workers.dev; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
     <meta name="color-scheme" content="dark" />
+    <meta name="app-version" content="20261123-2245" />
+    <script>
+      // Neue Version auf GitHub Pages? Dann einmal frisch laden. Die Home-Bildschirm-App hält alte Dateien
+      // sonst lange fest. Version setzen: node tools/bump-version.mjs (schreibt sie hier und in version.json).
+      (() => {
+        const mine = document.querySelector('meta[name="app-version"]').content;
+        const check = () => {
+          if (!mine || location.protocol === "file:" || document.querySelector("dialog[open]")) return;
+          fetch("version.json?t=" + Date.now(), { cache: "no-store" })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((j) => {
+              const v = j && j.v;
+              if (!v || v === mine) return;
+              try {
+                if (sessionStorage.getItem("abirechner.update") === v) return; // pro Sitzung nur ein Versuch
+                sessionStorage.setItem("abirechner.update", v);
+              } catch (e) {}
+              location.replace(location.pathname + "?v=" + encodeURIComponent(v));
+            })
+            .catch(() => {});
+        };
+        addEventListener("load", check);
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") check();
+        });
+      })();
+    </script>
     <title>Abi-Rechner Gaesdonck</title>
-    <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="chart.css" />
-    <link rel="stylesheet" href="untis.css" />
+    <link rel="stylesheet" href="style.css?v=20261123-2245" />
+    <link rel="stylesheet" href="chart.css?v=20261123-2245" />
+    <link rel="stylesheet" href="untis.css?v=20261123-2245" />
     <meta name="apple-mobile-web-app-title" content="Abi-Rechner" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="apple-touch-icon.png" />
@@ -218,21 +245,21 @@
     <input type="file" id="lf" hidden />
     <input type="file" id="uf" accept=".ics,text/calendar" hidden />
 
-    <script src="constants.js"></script>
-    <script src="state.js"></script>
-    <script src="untis.js"></script>
-    <script src="untis-subjects.js"></script>
-    <script src="untis-mobile.js"></script>
-    <script src="klausurplan.js"></script>
-    <script src="klausuren.js"></script>
-    <script src="calculation.js"></script>
-    <script src="chart.js"></script>
-    <script src="untis-ui.js"></script>
-    <script src="views.js"></script>
-    <script src="dialogs.js"></script>
-    <script src="lpo.js"></script>
-    <script src="wizard.js"></script>
-    <script src="events.js"></script>
-    <script src="main.js"></script>
+    <script src="constants.js?v=20261123-2245"></script>
+    <script src="state.js?v=20261123-2245"></script>
+    <script src="untis.js?v=20261123-2245"></script>
+    <script src="untis-subjects.js?v=20261123-2245"></script>
+    <script src="untis-mobile.js?v=20261123-2245"></script>
+    <script src="klausurplan.js?v=20261123-2245"></script>
+    <script src="klausuren.js?v=20261123-2245"></script>
+    <script src="calculation.js?v=20261123-2245"></script>
+    <script src="chart.js?v=20261123-2245"></script>
+    <script src="untis-ui.js?v=20261123-2245"></script>
+    <script src="views.js?v=20261123-2245"></script>
+    <script src="dialogs.js?v=20261123-2245"></script>
+    <script src="lpo.js?v=20261123-2245"></script>
+    <script src="wizard.js?v=20261123-2245"></script>
+    <script src="events.js?v=20261123-2245"></script>
+    <script src="main.js?v=20261123-2245"></script>
   </body>
 </html>
