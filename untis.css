@@ -560,6 +560,9 @@ dialog.un[open] {
 /* Entfall: knallrot, quer durch das ganze Kästchen durchgestrichen */
 .un-ls.x {
   background: #ff2d2d linear-gradient(to top right, transparent calc(50% - 1.5px), rgba(255, 255, 255, 0.9) calc(50% - 1.5px) calc(50% + 1.5px), transparent calc(50% + 1.5px));
+  /* über die ganze Fläche inkl. Rand und ohne Wiederholung, sonst schaut im linken Rand ein Stück Strich heraus */
+  background-origin: border-box;
+  background-repeat: no-repeat;
   color: #fff;
 }
 .un-ls.x b {
