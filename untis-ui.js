@@ -210,7 +210,8 @@ const UntisUI = (() => {
     if (cl.length) flush();
     return out;
   }
-  const STX = { cancelled: 'entfällt', changed: 'geändert', exam: 'Klausur' };
+  const STX = { cancelled: 'entfällt', changed: 'geändert', exam: 'Klausur' },
+    PLAN_HUE = 212; // alle normalen Stunden im Wochenplan in einem ruhigen Blau (passend zu --b)
 
   function grid(w, open) {
     const td = U.util.today(),
@@ -229,8 +230,12 @@ const UntisUI = (() => {
       nowM = now.getHours() * 60 + now.getMinutes(),
       colsHtml = w.days
         .map((d) => {
-          const items = [];
+          const items = [],
+            // Klausuren ersetzen die entfallenden Stunden: die wegfallenden Stunden in derselben Zeit nicht zeigen
+            ex = d.lessons.filter((l) => l.status === 'exam').map((l) => [mins(l.start), mins(l.end)]),
+            underExam = (l) => l.status === 'cancelled' && ex.some(([a, b]) => mins(l.start) < b && mins(l.end) > a);
           for (const l of d.lessons) {
+            if (underExam(l)) continue;
             const s = Math.max(mins(l.start), F),
               e = Math.min(mins(l.end), T);
             if (e <= s) {
@@ -246,7 +251,7 @@ const UntisUI = (() => {
                 cnt = open.get(k) || 0,
                 sx = STX[l.status] || '',
                 cls = (l.status === 'cancelled' ? ' x' : l.status === 'changed' ? ' c' : l.status === 'exam' ? ' e' : '') + (isLk(k) ? ' is-lk' : '');
-              return `<button type=button class="un-ls${cls}" data-u=ls data-k="${esc(k)}" data-d="${d.date}" data-id="${esc(l.id)}" data-s="${l.start}" style="--h:${hue(k)};top:${y(s) + 1}px;height:${h}px;left:calc(${(lane / n) * 100}% + 1px);width:calc(${100 / n}% - 2px)" aria-label="${esc(label(l) + ', ' + l.start + ' bis ' + l.end + (sx ? ', ' + sx : '') + (cnt ? ', ' + cnt + ' offene Hausaufgaben' : ''))}"><b>${esc(short(l))}</b>${h >= 30 && l.room ? `<small>${esc(l.room)}</small>` : ''}${cnt ? `<span class=un-bg>${cnt}</span>` : ''}</button>`;
+              return `<button type=button class="un-ls${cls}" data-u=ls data-k="${esc(k)}" data-d="${d.date}" data-id="${esc(l.id)}" data-s="${l.start}" style="--h:${PLAN_HUE};top:${y(s) + 1}px;height:${h}px;left:calc(${(lane / n) * 100}% + 1px);width:calc(${100 / n}% - 2px)" aria-label="${esc(label(l) + ', ' + l.start + ' bis ' + l.end + (sx ? ', ' + sx : '') + (cnt ? ', ' + cnt + ' offene Hausaufgaben' : ''))}"><b>${esc(short(l))}</b>${l.status === 'exam' && h >= 30 ? '<small>Klausur</small>' : ''}${h >= (l.status === 'exam' ? 44 : 30) && l.room ? `<small>${esc(l.room)}</small>` : ''}${cnt ? `<span class=un-bg>${cnt}</span>` : ''}</button>`;
             })
             .join('');
           const line = d.date === td && nowM >= F && nowM <= T ? `<i class=un-now style="top:${y(nowM)}px"></i>` : '';
@@ -282,7 +287,7 @@ const UntisUI = (() => {
     // Als Nächstes
     const nx = has ? U.next() : null,
       nxt = nx
-        ? `<button type=button class=un-nx data-u=ls data-k="${esc(key(nx))}" data-d="${nx.date}" data-id="${esc(nx.id)}" data-s="${nx.start}" style="--h:${hue(key(nx))}"><span class=dot></span><b>${nx.running ? 'Jetzt' : 'Als Nächstes'}</b><span class=nm>${esc(label(nx))}</span><small>${nx.date === td ? '' : fmt(nx.date) + ' '}${nx.start}${nx.room ? ' · ' + esc(nx.room) : ''}</small></button>`
+        ? `<button type=button class=un-nx data-u=ls data-k="${esc(key(nx))}" data-d="${nx.date}" data-id="${esc(nx.id)}" data-s="${nx.start}" style="--h:${PLAN_HUE}"><span class=dot></span><b>${nx.running ? 'Jetzt' : 'Als Nächstes'}</b><span class=nm>${esc(label(nx))}</span><small>${nx.date === td ? '' : fmt(nx.date) + ' '}${nx.start}${nx.room ? ' · ' + esc(nx.room) : ''}</small></button>`
         : '';
 
     // Wochenplan
