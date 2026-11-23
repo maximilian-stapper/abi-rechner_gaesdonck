@@ -9,7 +9,9 @@
  *              IF, EK, GE, SW, KU, MU, KR, LI.  „KU/MU-180“ aus dem Plan wird als 'KU-180, MU-180' eingetragen.
  *   Zusätze:   hsv (inkl. Hör-/Sehverstehen) · vorl (Text wird vorgelesen) · prakt (praktischer Anteil)
  *   LK-Klausur: 'LK-T14-180' (Band T14, siehe baender); 'E:mdl' / 'E:hsv' gilt nur für den Englisch-LK im Band
- *   Alles andere ist ein Termin ohne Klausur: 'NT' (Nachschreibtermin), 'GoDi 8:45 Uhr', …
+ *   Alles andere ist ein Termin ohne Klausur: 'GoDi 8:45 Uhr', 'Halbjahresende', …
+ *   Nachschreibtermine (NT) werden NICHT eingetragen: Wer nachschreibt, steht mit Namen in eigenen Listen,
+ *   und diese Daten gehören aus Datenschutzgründen nicht in die App.
  * frei: unterrichtsfreie Zeiten [von, bis, Name]
  * ========================================================================== */
 const KLAUSURPLAN = {
@@ -60,11 +62,9 @@ const KLAUSURPLAN = {
     '2026-11-10': { Q1: 'CH-90, PH-90', Q2: 'BI-155, CH-155, PH-155' },
     '2026-11-11': { EF: 'M-90' },
     '2026-11-12': { Q1: 'M-90', Q2: 'EK-180, GE-180, SW-180' },
-    '2026-11-13': { alle: 'NT' },
     '2026-11-17': { EF: 'GE-90, SW-90' },
     '2026-11-18': { Q1: 'BI-90' },
     '2026-11-19': { EF: 'EK-90', Q1: 'KU-135, MU-135, KR-135', Q2: 'GoDi 8:45 Uhr' },
-    '2026-11-20': { alle: 'NT' },
     '2026-11-24': { EF: 'CH-90, PH-90' },
     '2026-11-25': { Q2: 'L-135 vorl, S0-180, S9-180 hsv, F-180' },
     '2026-11-26': { EF: 'BI-90', Q1: 'EK-135' },
@@ -82,15 +82,12 @@ const KLAUSURPLAN = {
     '2026-12-17': { EF: 'D-90', Q2: 'M-180' },
     '2026-12-18': { Q1: 'CH-90, PH-90' },
     '2026-12-21': { Q1: 'D-90', Q2: 'BI-155, CH-155, PH-155' },
-    '2026-12-22': { Q2: 'NT, Halbjahresende' },
-    '2027-01-07': { alle: 'Sternsingerimpuls 9:30 Uhr' },
-    '2027-01-08': { alle: 'NT' },
+    '2026-12-22': { Q2: 'Halbjahresende' },
     '2027-01-11': { EF: 'F-90 hsv' },
     '2027-01-13': { Q1: 'BI-90' },
     '2027-01-14': { Q1: 'GE-90' },
     '2027-01-15': { EF: 'M-90' },
     '2027-01-18': { Q1: 'M-90' },
     '2027-01-20': { Q1: 'KU-180, MU-135, KR-135' },
-    '2027-01-22': { EF: 'NT', Q1: 'NT' },
   },
 };

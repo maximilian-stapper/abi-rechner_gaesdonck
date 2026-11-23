@@ -19,7 +19,6 @@ const Klausuren = (() => {
     PH: 'ph', IF: 'if', EK: 'ek', GE: 'ge', SW: 'sw', KU: 'ku', MU: 'mu', KR: 're', LI: 'li', PL: 'pl', PA: 'pa',
   };
   const NOTE = { hsv: 'inkl. Hör-/Sehverstehen', vorl: 'Text wird von der Lehrkraft vorgelesen', prakt: 'mit praktischem Anteil' };
-  const EVN = { NT: 'Nachschreibtermin' };
   const key = (c) => CODE[String(c).toUpperCase()] || '';
   const list = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
   const RX = /^(LK-T\d+|[A-Za-z]{1,2}\d?)-(\d+|mdl)(?:\s+(.+))?$/i;
@@ -42,7 +41,7 @@ const Klausuren = (() => {
   function token(t) {
     t = String(t).trim();
     const m = RX.exec(t);
-    if (!m) return { ev: t, long: EVN[t] || t };
+    if (!m) return { ev: t, long: t };
     const flags = [],
       per = {};
     list((m[3] || '').replace(/\s+/g, ',')).forEach((f) => {
@@ -133,5 +132,43 @@ const Klausuren = (() => {
 
   const notes = (e) => e.flags.map((f) => NOTE[f]).filter(Boolean);
 
-  return { token, bands, lkBands, build, notes, CODE, NOTE, util: { add, mon } };
+  // Klausuren als Kalenderdatei (iCalendar) für Apple-, Google- oder Outlook-Kalender:
+  // ganztägige Termine (der Plan nennt keine Uhrzeit) mit Erinnerung am Vortag um 9 Uhr.
+  // name(e): Fachname, now: Zeitpunkt der Erstellung. Gleiche UID = gleicher Termin, erneutes Importieren ersetzt ihn.
+  function ics(exams, name, now) {
+    const tx = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'),
+      fold = (l) => {
+        const out = [];
+        for (; l.length > 60; l = ' ' + l.slice(60)) out.push(l.slice(0, 60));
+        out.push(l);
+        return out.join('\r\n');
+      },
+      d = (s) => s.replace(/-/g, ''),
+      stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''),
+      lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Abi-Rechner Gaesdonck//Klausurplan//DE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Klausuren'];
+    for (const e of exams) {
+      const title = (e.dur ? 'Klausur ' : 'Mündliche Prüfung ') + name(e) + (e.dur ? ' (' + e.dur + ' Min.)' : ''),
+        desc = [...notes(e), e.lk ? 'LK-Band ' + e.band : '', 'Aus dem Klausurplan. Der Vertretungsplan in WebUntis hat Vorrang.'].filter(Boolean).join('\n');
+      lines.push(
+        'BEGIN:VEVENT',
+        'UID:' + d(e.date) + '-' + e.k + (e.lk ? '-lk' : '') + '@abi-rechner-gaesdonck',
+        'DTSTAMP:' + stamp,
+        'DTSTART;VALUE=DATE:' + d(e.date),
+        'DTEND;VALUE=DATE:' + d(add(e.date, 1)),
+        'SUMMARY:' + tx(title),
+        'DESCRIPTION:' + tx(desc),
+        'TRANSP:TRANSPARENT',
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:' + tx(title),
+        'TRIGGER:-PT15H',
+        'END:VALARM',
+        'END:VEVENT',
+      );
+    }
+    lines.push('END:VCALENDAR');
+    return lines.map(fold).join('\r\n') + '\r\n';
+  }
+
+  return { token, bands, lkBands, build, notes, ics, CODE, NOTE, util: { add, mon } };
 })();
