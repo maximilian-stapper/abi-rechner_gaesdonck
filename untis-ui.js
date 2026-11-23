@@ -514,6 +514,34 @@ const UntisUI = (() => {
     const nb = d.querySelector('.dbody');
     if (nb) nb.scrollTop = y;
   }
+  // Nächste Stunde in diesem Fach nach heute laut Untis-Plan (für „fällig zur nächsten Stunde“), sonst null
+  function nextLesson(k) {
+    const td = U.util.today();
+    for (let i = 1; i <= 56; i++) {
+      const l = U.day(U.util.add(td, i)).find((x) => key(x) === k && x.status !== 'cancelled');
+      if (l) return l;
+    }
+    return null;
+  }
+  // Fälligkeit im Formular: „Nächste Stunde“ (wenn Untis eine kennt) oder ein Datum
+  function dueUi(mode) {
+    const box = $('#udm');
+    if (!box) return;
+    if (mode) box.dataset.pick = mode; // eigene Wahl merken, auch über einen Fachwechsel ohne Stunde hinweg
+    const l = nextLesson($('#ua').value),
+      m = l ? box.dataset.pick || 'next' : 'date';
+    box.dataset.m = m;
+    box.querySelectorAll('button').forEach((b) => {
+      const on = b.dataset.v === m;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on);
+      if (b.dataset.v === 'next') b.disabled = !l;
+    });
+    $('#udn').textContent = l ? fmt(l.date) + ', ' + l.start + ' Uhr' : 'Keine Stunde in diesem Fach im Stundenplan gefunden.';
+    $('#udn').hidden = m !== 'next' && !!l;
+    $('#ud').hidden = m !== 'date';
+  }
+
   function addForm(k) {
     cur = null;
     const d = dlg(),
@@ -521,8 +549,9 @@ const UntisUI = (() => {
       rest = Object.entries(US.NAMES).filter(([id]) => id !== 'e9' && id !== 'stl' && !reg.has(id)),
       opt = (id, n) => `<option value="${esc(id)}"${id === k ? ' selected' : ''}>${esc(n)}</option>`;
     d.className = 'un';
-    d.innerHTML = `<h3>Hausaufgabe eintragen</h3><div class=dbody><h4>Fach</h4><select id=ua>${reg.size ? `<optgroup label="Aus deinem Plan">${[...reg.entries()].map(([id, n]) => opt(id, n)).join('')}</optgroup>` : ''}<optgroup label="${reg.size ? 'Weitere Fächer' : 'Fächer'}">${rest.map(([id, n]) => opt(id, n)).join('')}</optgroup></select><h4>Aufgabe</h4><textarea id=ut rows=3 maxlength=500 placeholder="z. B. S. 45 Nr. 3"></textarea><h4>Fällig am</h4><input type=date id=ud value="${U.util.add(U.util.today(), 1)}"></div><div class=bar><button type=button class=bt data-u=hwcancel data-k="${esc(k)}">Abbrechen</button><button type=button class="bt pr" data-u=hwsave>Speichern</button></div>`;
+    d.innerHTML = `<h3>Hausaufgabe eintragen</h3><div class=dbody><h4>Fach</h4><select id=ua>${reg.size ? `<optgroup label="Aus deinem Plan">${[...reg.entries()].map(([id, n]) => opt(id, n)).join('')}</optgroup>` : ''}<optgroup label="${reg.size ? 'Weitere Fächer' : 'Fächer'}">${rest.map(([id, n]) => opt(id, n)).join('')}</optgroup></select><h4>Aufgabe</h4><textarea id=ut rows=3 maxlength=500 placeholder="z. B. S. 45 Nr. 3"></textarea><h4>Fällig</h4><div class=un-tg role=group aria-label="Fälligkeit" id=udm><button type=button data-u=hwdue data-v=next>Nächste Stunde</button><button type=button data-u=hwdue data-v=date>Datum wählen</button></div><small class="d un-udn" id=udn></small><input type=date id=ud value="${U.util.add(U.util.today(), 1)}"></div><div class=bar><button type=button class=bt data-u=hwcancel data-k="${esc(k)}">Abbrechen</button><button type=button class="bt pr" data-u=hwsave>Speichern</button></div>`;
     if (!d.open) d.showModal();
+    dueUi();
     $('#ut').focus();
   }
   function askPass() {
@@ -889,7 +918,8 @@ const UntisUI = (() => {
     } else if (a == 'hwsave') {
       const k = $('#ua').value,
         text = $('#ut').value.trim(),
-        due = $('#ud').value,
+        nl = $('#udm').dataset.m === 'next' ? nextLesson(k) : null,
+        due = nl ? nl.date : $('#ud').value,
         nm = US.name(k);
       if (!text) {
         $('#ut').focus();
@@ -897,7 +927,8 @@ const UntisUI = (() => {
       }
       U.hwAdd(nm !== k ? { sub: k, subName: nm, text, due } : { sub: '', subName: k, text, due });
       sheet(k);
-    } else if (a == 'hwdel') {
+    } else if (a == 'hwdue') dueUi(d.v);
+    else if (a == 'hwdel') {
       if (confirm('Diese Hausaufgabe löschen?')) U.hwRemove(d.id);
     } else if (a == 'pwgo') {
       const v = $('#up').value,
@@ -934,6 +965,7 @@ const UntisUI = (() => {
     const t = e.target,
       f = t.dataset && t.dataset.uf;
     if (t.id == 'us-rem' && !t.checked) pwSet(''); // Häkchen weg: gespeichertes Passwort sofort löschen
+    if (t.id == 'ua') dueUi(); // anderes Fach: nächste Stunde neu suchen
     if (t.id == 'uf' && t.files && t.files[0]) {
       const r = new FileReader();
       t.value = '';
