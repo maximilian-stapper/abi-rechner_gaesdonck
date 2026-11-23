@@ -213,11 +213,10 @@ const UntisUI = (() => {
   const STX = { cancelled: 'entfällt', changed: 'geändert', exam: 'Klausur' },
     PLAN_HUE = 212; // alle normalen Stunden im Wochenplan in einem ruhigen Blau (passend zu --b)
 
-  // Klausurtage laut Klausurplan: nur an Tagen mit Stunden und nur, solange Untis die Klausur noch nicht selbst zeigt
-  const kpBase = (k) => (k === 'e9' ? 'es' : k); // Untis fasst beide Spanisch-Kurse zusammen
+  // Klausurtage laut Klausurplan: an jedem Tag mit Stunden, auch wenn Untis die Klausur schon selbst zeigt
   function kpDay(d) {
     if (!d.lessons.length) return [];
-    return kpList.filter((e) => e.date === d.date && !d.lessons.some((l) => l.status === 'exam' && US.split(key(l)).base === kpBase(e.k)));
+    return kpList.filter((e) => e.date === d.date);
   }
 
   function grid(w, open) {
