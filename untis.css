@@ -123,6 +123,34 @@
   pointer-events: none;
 }
 
+/* Aktualisieren-Knopf: dreht sich, solange abgeglichen wird */
+.un-rf {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--t);
+}
+.un-rf[data-busy]::after {
+  content: none;
+}
+.un-rf[data-busy] svg {
+  animation: un-spin 0.9s linear infinite;
+}
+.un-rf[disabled] {
+  cursor: default;
+}
+@keyframes un-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .un-rf[data-busy] svg {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
 /* Stundenblöcke */
 .un-ls {
   position: absolute;

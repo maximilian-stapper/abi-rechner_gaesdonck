@@ -305,7 +305,7 @@ const UntisUI = (() => {
     const busy = uiBusy || s.busy;
 
     const planCard = has
-      ? `<div class=g><div class=un-nav><button type=button class=ib data-u=prev aria-label="Vorige Woche">‹</button><div class=wk><b>KW ${kw(w.from)}</b><small>${wlabel}</small></div><button type=button class=ib data-u=next aria-label="Nächste Woche">›</button><button type=button class=bt data-u=today${w.from === homeWeek() ? ' disabled' : ''}>Heute</button></div>${g}<div class=un-foot>${note}<small class=d>${s.lastSync ? 'Stand: ' + stamp(s.lastSync) + ' · ' : ''}${s.lessons} Stunden</small><span class=sp></span><button type=button class=lk data-u=sync ${busy ? 'data-busy=1 disabled' : ''}>Abgleichen</button><button type=button class=lk data-u=setup>Einrichten</button></div></div>`
+      ? `<div class=g><div class=un-nav><button type=button class=ib data-u=prev aria-label="Vorige Woche">‹</button><div class=wk><b>KW ${kw(w.from)}</b><small>${wlabel}</small></div><button type=button class=ib data-u=next aria-label="Nächste Woche">›</button><button type=button class=bt data-u=today${w.from === homeWeek() ? ' disabled' : ''}>Heute</button><button type=button class="ib un-rf" data-u=sync ${busy ? 'data-busy=1 disabled ' : ''}aria-label="Stundenplan aktualisieren" title="Aktualisieren"><svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round aria-hidden=true><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>${g}<div class=un-foot>${note}<small class=d>${s.lastSync ? 'Stand: ' + stamp(s.lastSync) + ' · ' : ''}${s.lessons} Stunden</small><span class=sp></span><button type=button class=lk data-u=setup>Einrichten</button></div></div>`
       : '';
 
     // Hausaufgaben (Überfälliges fehlt absichtlich)
@@ -328,7 +328,7 @@ const UntisUI = (() => {
   function lessonInfo(l) {
     const row = (a, b) => (b ? `<div class=un-li><span>${a}</span><b>${esc(b)}</b></div>` : ''),
       sx = { cancelled: 'Entfällt', changed: 'Geändert (Vertretung oder Raumänderung)', exam: 'Klausur oder Prüfung' }[l.status];
-    return `<div class=un-info>${row('Zeit', fmt(l.date) + ' · ' + l.start + '–' + l.end + (l.n > 1 ? ' (' + l.n + ' Stunden)' : ''))}${row('Raum', l.room)}${row('Lehrkraft', l.teacher)}${row('Kurs', l.subName && l.subName !== label(l) ? l.subName : '')}${row('Status', sx || '')}${row('Untis-Kennung', l.raw && l.raw !== 'STANDARD standard' ? l.raw : '')}${l.note ? `<div class=un-note>${esc(l.note)}</div>` : ''}</div>`;
+    return `<div class=un-info>${row('Zeit', fmt(l.date) + ' · ' + l.start + '–' + l.end + (l.n > 1 ? ' (' + l.n + ' Stunden)' : ''))}${row('Raum', l.room)}${row('Lehrkraft', l.teacher)}${row('Kurs', l.subName && l.subName !== label(l) ? l.subName : '')}${row('Status', sx || '')}${row('Untis-Kennung', l.raw || (l.src === 'ms' ? '(vor dem Update abgeglichen)' : ''))}${l.note ? `<div class=un-note>${esc(l.note)}</div>` : ''}</div>`;
   }
   function sheet(k, ls) {
     cur = { k, ls };
@@ -524,6 +524,13 @@ const UntisUI = (() => {
     }
     uiBusy = false;
     paintBusy();
+    if (o.silent) {
+      // Automatischer Abgleich: kein Passwort-Fenster und keine Erfolgsmeldung, nur Probleme melden
+      if (ask && !good.length) msg = { c: 'warn', t: 'Untis hat dich abgemeldet. Tippe auf ↻, um dich neu anzumelden.' };
+      else if (bad.length) msg = { c: good.length ? 'warn' : 'err', t: [...good, ...bad].join(' · ') };
+      if (view === 'plan') redraw(); // die Einrichten-Seite nicht neu zeichnen, sonst gehen Eingaben verloren
+      return;
+    }
     if (ask && !good.length) {
       msg = null;
       return askPass();
@@ -531,6 +538,17 @@ const UntisUI = (() => {
     msg = bad.length ? { c: good.length ? 'warn' : 'err', t: [...good, ...bad].join(' · ') } : { c: 'ok', t: good.join(' · ') + ' abgeglichen.' };
     redraw();
   }
+  // Beim Öffnen der Seite (und wenn sie nach längerer Zeit wieder in den Vordergrund kommt) still abgleichen,
+  // mit der gespeicherten Untis-Sitzung bzw. dem gemerkten Passwort
+  const AUTO_AGAIN = 15 * 60 * 1000;
+  function autoSync() {
+    if (!(msOn() || altOk()) || uiBusy || U.status().busy) return;
+    doSync({ silent: true });
+  }
+  addEventListener('load', autoSync);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && Date.now() - (U.status().lastSync || 0) > AUTO_AGAIN) autoSync();
+  });
   function quick() {
     if (msOn() || altOk()) return doSync();
     view = 'setup';
