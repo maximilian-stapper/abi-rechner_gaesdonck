@@ -305,7 +305,7 @@ const UntisUI = (() => {
     const busy = uiBusy || s.busy;
 
     const planCard = has
-      ? `<div class=g><div class=un-nav><button type=button class=ib data-u=prev aria-label="Vorige Woche">‹</button><div class=wk><b>KW ${kw(w.from)}</b><small>${wlabel}</small></div><button type=button class=ib data-u=next aria-label="Nächste Woche">›</button><button type=button class=bt data-u=today${w.from === homeWeek() ? ' disabled' : ''}>Heute</button><button type=button class="ib un-rf" data-u=sync ${busy ? 'data-busy=1 disabled ' : ''}aria-label="Stundenplan aktualisieren" title="Aktualisieren"><svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round aria-hidden=true><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>${g}<div class=un-foot>${note}<small class=d>${s.lastSync ? 'Stand: ' + stamp(s.lastSync) + ' · ' : ''}${s.lessons} Stunden</small><span class=sp></span><button type=button class=lk data-u=setup>Einrichten</button></div></div>`
+      ? `<div class=g id=un-plan><div class=un-nav><button type=button class=ib data-u=prev aria-label="Vorige Woche">‹</button><div class=wk><b>KW ${kw(w.from)}</b><small>${wlabel}</small></div><button type=button class=ib data-u=next aria-label="Nächste Woche">›</button><button type=button class=bt data-u=today${w.from === homeWeek() ? ' disabled' : ''}>Heute</button><button type=button class="ib un-rf" data-u=sync ${busy ? 'data-busy=1 disabled ' : ''}aria-label="Stundenplan aktualisieren" title="Aktualisieren"><svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round aria-hidden=true><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>${g}<div class=un-foot>${note}<small class=d>${s.lastSync ? 'Stand: ' + stamp(s.lastSync) + ' · ' : ''}${s.lessons} Stunden</small><span class=sp></span><button type=button class=lk data-u=setup>Einrichten</button></div></div>`
       : '';
 
     // Hausaufgaben (Überfälliges fehlt absichtlich)
@@ -316,7 +316,136 @@ const UntisUI = (() => {
         .join('');
     const hwCard = `<div class=g><div class=un-hh><h2>Hausaufgaben</h2><div class=un-tg role=group aria-label="Anzeige"><button type=button data-u=hwall data-v=0 aria-pressed="${!hwAll}" class="${!hwAll ? 'on' : ''}">Offen</button><button type=button data-u=hwall data-v=1 aria-pressed="${hwAll}" class="${hwAll ? 'on' : ''}">Alle</button></div></div>${chips ? `<div class=un-chips>${chips}</div>` : ''}${list.length ? list.map((h) => hwItem(h, true, reg)).join('') : `<p class=d style="margin:10px 0">${hwAll ? 'Noch keine Hausaufgaben.' : 'Keine offenen Hausaufgaben.'}</p>`}<div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=hwnew data-k="">+ Hausaufgabe</button></div></div>`;
 
-    return banner + first + nxt + planCard + hwCard + `<small class=d>Stundenplan und Hausaufgaben liegen nur in diesem Browser. Fremde Angaben (Räume, Lehrkräfte, Aufgaben) stammen aus Untis und sind ohne Gewähr.</small>`;
+    return banner + first + nxt + planCard + kpCard(td) + hwCard + `<small class=d>Stundenplan und Hausaufgaben liegen nur in diesem Browser. Fremde Angaben (Räume, Lehrkräfte, Aufgaben) stammen aus Untis und sind ohne Gewähr.</small>`;
+  }
+
+  // ---------- Klausurplan (klausurplan.js + klausuren.js) ----------
+  // Nur die Klausuren der eigenen schriftlichen Fächer, dazu Ferien und schulfreie Tage, Woche für Woche
+  const KP = typeof KLAUSURPLAN !== 'undefined' ? KLAUSURPLAN : null,
+    KL = typeof Klausuren !== 'undefined' ? Klausuren : null,
+    MOL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
+    WDL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'],
+    STUFEN = ['EF', 'Q1', 'Q2'],
+    dm = (s) => P(s).getDate() + '.' + (P(s).getMonth() + 1) + '.';
+  let kpPast = false,
+    kpList = []; // Klausuren der letzten Anzeige (data-i zeigt hierauf)
+
+  // Stufe: selbst gewählt, sonst aus der Untis-Klasse ('Q1'), sonst Q1
+  function kpStufe() {
+    const x = ux().stufe;
+    if (STUFEN.includes(x)) return x;
+    const td = U.util.today(),
+      n = {};
+    U.range(U.util.add(td, -14), U.util.add(td, 28)).forEach((l) => {
+      const m = /\b(EF|Q1|Q2)\b/i.exec(l.cls || '');
+      if (m) n[m[1].toUpperCase()] = (n[m[1].toUpperCase()] || 0) + 1;
+    });
+    return Object.keys(n).sort((a, b) => n[b] - n[a])[0] || 'Q1';
+  }
+  function kpProfile() {
+    const stufe = kpStufe(),
+      idx = (stufe === 'Q2' ? 2 : 0) + (KP.hj === 2 ? 1 : 0), // Halbjahr wie SEM: Q1.1, Q1.2, Q2.1, Q2.2
+      cells = (st && st.cells) || {},
+      lks = stufe === 'EF' ? [] : Object.keys(cells).filter((k) => (cells[k] || [])[idx] === 'LK'),
+      lkNr = {},
+      subs = new Set(),
+      td = U.util.today();
+    // Aus Untis: welche Fächer im Plan stehen (für die EF) und die LK-Kursnummer ('M L2' → 2) für die Bänder
+    U.range(U.util.add(td, -28), U.util.add(td, 28)).forEach((l) => {
+      const { base, lk } = US.split(key(l));
+      subs.add(base === 'es' && /^S9/i.test(l.subName || '') ? 'e9' : base);
+      const m = lk && /L[Kk]?[\s._-]*(\d{1,2})(?!\d)/.exec(l.subName || '');
+      if (m) lkNr[base] = +m[1];
+    });
+    return { stufe, idx, cells, lks, lkNr, subs };
+  }
+  const kpKey = (e) => (e.lk ? e.k + '-lk' : e.k),
+    kpDur = (e) => (e.dur ? e.dur + ' Min.' : 'mündlich'),
+    kpIn = (d, td) => {
+      const n = Math.round((P(d) - P(td)) / 864e5);
+      return n === 0 ? 'heute' : n === 1 ? 'morgen' : 'in ' + n + ' Tagen';
+    };
+
+  function kpCard(td) {
+    if (!KP || !KL) return '';
+    const p = kpProfile(),
+      weeks = KL.build(KP, p),
+      sem = p.stufe === 'EF' ? 'EF' : SEM[p.idx],
+      toggle = `<div class=un-tg role=group aria-label="Stufe">${STUFEN.map((s) => `<button type=button data-u=kpst data-v=${s} aria-pressed="${s === p.stufe}" class="${s === p.stufe ? 'on' : ''}">${s}</button>`).join('')}</div>`;
+    kpList = weeks.flatMap((w) => w.days.flatMap((d) => d.exams));
+    const upcoming = kpList.filter((e) => e.date >= td),
+      nx = upcoming[0],
+      noWritten = p.stufe !== 'EF' && !Object.values(p.cells).some((c) => c && (c[p.idx] === 'S' || c[p.idx] === 'LK'));
+
+    // Wochen: vergangene einklappen, ganze Ferienwochen zu einer Zeile zusammenfassen, Monatsnamen dazwischen
+    const past = weeks.filter((w) => U.util.add(w.mon, 4) < td),
+      shown = kpPast ? weeks : weeks.filter((w) => U.util.add(w.mon, 4) >= td),
+      rows = [];
+    let lastMo = -1;
+    for (let i = 0; i < shown.length; i++) {
+      const w = shown[i],
+        off = w.days.every((d) => d.off) && w.days.every((d) => d.off === w.days[0].off) ? w.days[0].off : '',
+        mo = P(U.util.add(w.mon, 3)).getMonth();
+      if (mo !== lastMo) {
+        rows.push(`<div class=kp-mo>${MOL[mo]}${mo === 0 || lastMo === -1 ? ' ' + P(U.util.add(w.mon, 3)).getFullYear() : ''}</div>`);
+        lastMo = mo;
+      }
+      if (off) {
+        let j = i;
+        while (j + 1 < shown.length && shown[j + 1].days.every((d) => d.off === off)) j++;
+        const last = shown[j],
+          kws = kw(w.mon) + (j > i ? '–' + kw(last.mon) : '');
+        rows.push(`<div class="kp-wk kp-fw"><div class=kp-kw><b>${kws}</b></div><div class=kp-off><b>${esc(off)}</b><small>${dm(w.mon)}–${dm(U.util.add(last.mon, 4))}</small></div></div>`);
+        i = j;
+        continue;
+      }
+      const isCur = w.mon === U.util.mon(td),
+        cells = w.days
+          .map((d, di) => {
+            const prevOff = di > 0 && w.days[di - 1].off === d.off;
+            const ex = d.exams
+              .map((e) => {
+                const k = kpKey(e),
+                  n = kpList.indexOf(e);
+                return `<button type=button class="kp-x${e.unsure ? ' q' : ''}${e.date < td ? ' pa' : ''}" data-u=kpx data-i=${n} style="--h:${hue(k)}" aria-label="${esc(US.name(k) + ', ' + fmt(e.date) + ', ' + kpDur(e) + (e.unsure ? ', nur wenn dein Kurs im Band ' + e.band + ' liegt' : ''))}"><b>${esc(US.short(e.k) || e.k)}</b><small>${e.lk ? 'LK' + (e.unsure ? '?' : '') + ' ' : ''}${e.dur ? e.dur + '′' : 'mdl.'}</small></button>`;
+              })
+              .join('');
+            const ev = d.events.map((x) => `<small class=kp-ev title="${esc(x.long)}">${esc(x.ev)}</small>`).join('');
+            return `<div class="kp-d${d.off ? ' off' : ''}${d.date === td ? ' today' : ''}"><i>${P(d.date).getDate()}</i>${d.off && !prevOff ? `<small class=kp-ol title="${esc(d.off)}">${esc(/ferien/i.test(d.off) ? 'Ferien' : d.off)}</small>` : ''}${ex}${ev}</div>`;
+          })
+          .join('');
+      rows.push(`<div class="kp-wk${isCur ? ' cur' : ''}"><button type=button class="kp-kw${w.mon === wk ? ' on' : ''}" data-u=kpwk data-w=${w.mon} aria-label="KW ${kw(w.mon)} im Stundenplan zeigen"><b>${kw(w.mon)}</b></button>${cells}</div>`);
+    }
+
+    const top = `<div class=un-hh><h2>Klausuren</h2>${toggle}</div><p class=d style="margin:6px 0 10px">${p.stufe === 'EF' ? 'Klausuren deiner Fächer aus dem Stundenplan' : `Nur deine schriftlichen Fächer in ${sem}`}, dazu Ferien und freie Tage. Stand ${esc(KP.stand.split(',')[0])}.</p>`,
+      next = nx
+        ? `<button type=button class="un-nx kp-nx" data-u=kpx data-i=${kpList.indexOf(nx)} style="--h:${hue(kpKey(nx))}"><span class=dot></span><b>Nächste Klausur</b><span class=nm>${esc(US.name(kpKey(nx)))}</span><small>${fmt(nx.date)} · ${kpDur(nx)} · ${kpIn(nx.date, td)}</small></button><small class="d kp-cnt">${upcoming.length === 1 ? 'Das ist die letzte Klausur' : `Noch ${upcoming.length} Klausuren`} in diesem Halbjahr.</small>`
+        : `<p class=d style="margin:4px 0 10px">${noWritten ? `Im Abi-Rechner sind für ${sem} keine schriftlichen Fächer eingetragen. Trag deine Kurse dort ein (S oder LK), dann erscheinen hier deine Klausuren.` : kpList.length ? 'In diesem Halbjahr stehen keine Klausuren mehr an.' : 'Für deine Fächer stehen in diesem Plan keine Klausuren.'}</p>`,
+      pastBtn = past.length ? `<button type=button class="lk kp-past" data-u=kppast aria-expanded="${kpPast}">${kpPast ? 'Vergangene Wochen ausblenden' : past.length + ' vergangene Woche' + (past.length === 1 ? '' : 'n') + ' zeigen'}</button>` : '',
+      unsure = kpList.some((e) => e.unsure && e.date >= td)
+        ? `<small class="d kp-nt">Mit <b>?</b>: LK-Klausur, falls dein Kurs (L1 oder L2) im angegebenen Band liegt. Nach dem Untis-Abgleich klärt sich das von selbst.</small>`
+        : '',
+      grid = `<div class=kp><div class="kp-wk kp-hd"><span>KW</span>${WD.slice(0, 5).map((d) => `<span>${d}</span>`).join('')}</div>${rows.join('')}</div>`;
+    return `<div class=g id=kp>${top}${next}${pastBtn}${grid}${unsure}<small class="d kp-nt">Tippe auf eine Klausur für Details und auf die KW, um die Woche oben im Stundenplan zu sehen. NT = Nachschreibtermin. Der Vertretungsplan in WebUntis hat Vorrang.</small></div>`;
+  }
+
+  function kpSheet(e) {
+    const k = kpKey(e),
+      d = dlg(),
+      row = (a, b) => `<div class=un-li><span>${a}</span><b>${esc(b)}</b></div>`,
+      dd = P(e.date);
+    cur = null;
+    d.className = 'un';
+    d.innerHTML = `<h3 style="--h:${hue(k)}"><span class=dot></span>${esc(US.name(k))}</h3><div class=dbody><div class=un-info>${row('Datum', WDL[wdOf(e.date)] + ', ' + dd.getDate() + '. ' + MOL[dd.getMonth()] + ' ' + dd.getFullYear())}${row('Art', e.dur ? 'Klausur, ' + e.dur + ' Minuten' : 'Mündliche Prüfung')}${e.lk ? row('LK-Band', e.band + (e.unsure ? ' (nur, wenn dein Kurs dazugehört)' : '')) : ''}${KL.notes(e).map((n) => row('Hinweis', n)).join('')}${row('Woche', 'KW ' + kw(e.date) + (e.date >= U.util.today() ? ', ' + kpIn(e.date, U.util.today()) : ''))}</div><p class=d>Aus dem ${esc(KP.titel)} (Stand ${esc(KP.stand)}). Der Vertretungsplan in WebUntis hat Vorrang.</p></div><div class=bar><button type=button class=bt data-u=kpwk data-w=${U.util.mon(e.date)}>Woche im Stundenplan</button><button type=button class="bt pr" data-u=x>Schließen</button></div>`;
+    if (!d.open) d.showModal();
+  }
+  // Woche oben im Stundenplan öffnen
+  function kpWeek(w) {
+    wk = w;
+    if (dlg().open) dlg().close(); // close zeichnet neu
+    else render();
+    const el = $('#un-plan');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ---------- Blätter (Dialog) ----------
@@ -695,7 +824,17 @@ const UntisUI = (() => {
       keySet('');
       render();
     } else if (a == 'ics') $('#uf').click();
-    else if (a == 'ls') sheet(d.k, { date: d.d, id: d.id, start: d.s });
+    else if (a == 'kpx') {
+      const x = kpList[+d.i];
+      if (x) kpSheet(x);
+    } else if (a == 'kpwk') kpWeek(d.w);
+    else if (a == 'kpst') {
+      uxSet({ stufe: d.v });
+      render();
+    } else if (a == 'kppast') {
+      kpPast = !kpPast;
+      render();
+    } else if (a == 'ls') sheet(d.k, { date: d.d, id: d.id, start: d.s });
     else if (a == 'sub') sheet(d.k);
     else if (a == 'chk') {
       const h = hws().find((x) => x.id === d.id);
