@@ -352,7 +352,9 @@ const Untis = (() => {
       .map((p) => {
         const g = (ty) => (p.elements || []).filter((e) => e.type === ty).map((e) => el.get(ty + ':' + e.id)).filter(Boolean),
           su = g(3)[0], is = p.is || {}, cs = String(p.cellState || '');
-        const status = is.cancelled || cs === 'CANCEL' ? 'cancelled'
+        // Rohe Untis-Kennzeichen mitschreiben (z. B. "CANCEL cancelled teacher:ABSENT"), damit sich Sonderfälle später nachvollziehen lassen
+        const raw = [cs, ...Object.keys(is).filter((k) => is[k] === true), ...(p.elements || []).filter((e) => e.state && e.state !== 'REGULAR').map((e) => ({ 1: 'class', 2: 'teacher', 3: 'subject', 4: 'room' }[e.type] || e.type) + ':' + e.state)].filter(Boolean).join(' ');
+        const status = is.cancelled || is.free || cs === 'CANCEL' || cs === 'FREE' ? 'cancelled'
           : is.exam || cs === 'EXAM' ? 'exam'
           : is.substitution || is.additional || is.roomSubstitution || is.shift || /SUBST|ADDITIONAL|SHIFT/.test(cs) ? 'changed' : 'ok';
         const l = mkLesson({
@@ -360,7 +362,7 @@ const Untis = (() => {
           date: d8(p.date), start: t4(p.startTime), end: t4(p.endTime),
           subName: su ? nme(su) : '', subLong: su ? su.longName || su.displayname || '' : '',
           teacher: g(2).map(nme).join(', '), room: g(4).map(nme).join(', '), cls: g(1).map(nme).join(', '),
-          status, note: [p.substText, p.lessonText, p.periodText].filter(Boolean).join(' · '), src: 'ms',
+          status, raw, note: [p.substText, p.lessonText, p.periodText].filter(Boolean).join(' · '), src: 'ms',
         });
         return hook(H.lesson, p, l);
       })
@@ -574,8 +576,14 @@ const Untis = (() => {
     }
     return r;
   };
+  // Eine Klausur ersetzt die Stunden, die zur selben Zeit liegen (Untis lässt sie oft unverändert stehen):
+  // diese Stunden fallen weg, bevor Doppelstunden zusammengefasst werden. Eine Stunde nach der Klausur bleibt stehen.
+  const dropUnderExam = (a) => {
+    const ex = a.filter((l) => l.status === 'exam');
+    return ex.length ? a.filter((l) => l.status === 'exam' || !ex.some((e) => l.start < e.end && l.end > e.start)) : a;
+  };
   const day = (d, o) => {
-    const a = (D.days[d] || []).map((l) => Object.assign({}, l));
+    const a = dropUnderExam(D.days[d] || []).map((l) => Object.assign({}, l));
     return o && o.merge ? merge(a, typeof o.merge === 'number' ? o.merge : 10) : a;
   };
   const range = (a, b) => {

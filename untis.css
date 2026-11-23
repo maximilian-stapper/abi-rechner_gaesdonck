@@ -153,27 +153,6 @@
 .un-ls:active {
   filter: brightness(1.2);
 }
-.un-ls.x {
-  opacity: 0.45;
-  border-style: dashed;
-}
-.un-ls.x b {
-  text-decoration: line-through;
-}
-.un-ls.c::after,
-.un-ls.e::after {
-  content: '';
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--w);
-}
-.un-ls.e::after {
-  background: var(--no);
-}
 .un-bg {
   position: absolute;
   top: 2px;
@@ -541,6 +520,35 @@ dialog.un[open] {
 }
 .un-ls.is-lk b {
   font-weight: 800;
+}
+
+/* Besondere Stunden: kräftige Vollfarbe statt Punkt (steht nach .is-lk, damit es auch für LKs gilt) */
+.un-ls.x,
+.un-ls.c,
+.un-ls.e {
+  border-color: transparent;
+  opacity: 1;
+}
+/* Entfall: knallrot, quer durch das ganze Kästchen durchgestrichen */
+.un-ls.x {
+  background: #ff2d2d linear-gradient(to top right, transparent calc(50% - 1.5px), rgba(255, 255, 255, 0.9) calc(50% - 1.5px) calc(50% + 1.5px), transparent calc(50% + 1.5px));
+  color: #fff;
+}
+.un-ls.x b {
+  text-decoration: line-through;
+}
+/* Raumänderung / Vertretung: lila */
+.un-ls.c {
+  background: #9b5cff;
+  color: #fff;
+}
+/* Klausur: knallgelb */
+.un-ls.e {
+  background: #ffd60a;
+  color: #1c1a00;
+}
+.un-ls.e small {
+  opacity: 0.85;
 }
 
 /* Einrichten: aufklappbare Bereiche */

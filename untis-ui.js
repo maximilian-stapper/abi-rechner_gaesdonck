@@ -230,12 +230,8 @@ const UntisUI = (() => {
       nowM = now.getHours() * 60 + now.getMinutes(),
       colsHtml = w.days
         .map((d) => {
-          const items = [],
-            // Klausuren ersetzen die entfallenden Stunden: die wegfallenden Stunden in derselben Zeit nicht zeigen
-            ex = d.lessons.filter((l) => l.status === 'exam').map((l) => [mins(l.start), mins(l.end)]),
-            underExam = (l) => l.status === 'cancelled' && ex.some(([a, b]) => mins(l.start) < b && mins(l.end) > a);
+          const items = []; // Stunden unter einer Klausur hat untis.js (day) schon entfernt
           for (const l of d.lessons) {
-            if (underExam(l)) continue;
             const s = Math.max(mins(l.start), F),
               e = Math.min(mins(l.end), T);
             if (e <= s) {
@@ -251,7 +247,7 @@ const UntisUI = (() => {
                 cnt = open.get(k) || 0,
                 sx = STX[l.status] || '',
                 cls = (l.status === 'cancelled' ? ' x' : l.status === 'changed' ? ' c' : l.status === 'exam' ? ' e' : '') + (isLk(k) ? ' is-lk' : '');
-              return `<button type=button class="un-ls${cls}" data-u=ls data-k="${esc(k)}" data-d="${d.date}" data-id="${esc(l.id)}" data-s="${l.start}" style="--h:${PLAN_HUE};top:${y(s) + 1}px;height:${h}px;left:calc(${(lane / n) * 100}% + 1px);width:calc(${100 / n}% - 2px)" aria-label="${esc(label(l) + ', ' + l.start + ' bis ' + l.end + (sx ? ', ' + sx : '') + (cnt ? ', ' + cnt + ' offene Hausaufgaben' : ''))}"><b>${esc(short(l))}</b>${l.status === 'exam' && h >= 30 ? '<small>Klausur</small>' : ''}${h >= (l.status === 'exam' ? 44 : 30) && l.room ? `<small>${esc(l.room)}</small>` : ''}${cnt ? `<span class=un-bg>${cnt}</span>` : ''}</button>`;
+              return `<button type=button class="un-ls${cls}" data-u=ls data-k="${esc(k)}" data-d="${d.date}" data-id="${esc(l.id)}" data-s="${l.start}" style="--h:${PLAN_HUE};top:${y(s) + 1}px;height:${h}px;left:calc(${(lane / n) * 100}% + 1px);width:calc(${100 / n}% - 2px)" aria-label="${esc(label(l) + ', ' + l.start + ' bis ' + l.end + (sx ? ', ' + sx : '') + (cnt ? ', ' + cnt + ' offene Hausaufgaben' : ''))}"><b>${esc(short(l))}</b>${l.status === 'exam' && h >= 30 ? '<small>Klausur</small>' : ''}${h >= (l.status === 'exam' ? 44 : 30) && l.room && !(l.status === 'exam' && /klausur/i.test(l.room)) ? `<small>${esc(l.room)}</small>` : ''}${cnt ? `<span class=un-bg>${cnt}</span>` : ''}</button>`;
             })
             .join('');
           const line = d.date === td && nowM >= F && nowM <= T ? `<i class=un-now style="top:${y(nowM)}px"></i>` : '';
@@ -332,7 +328,7 @@ const UntisUI = (() => {
   function lessonInfo(l) {
     const row = (a, b) => (b ? `<div class=un-li><span>${a}</span><b>${esc(b)}</b></div>` : ''),
       sx = { cancelled: 'Entfällt', changed: 'Geändert (Vertretung oder Raumänderung)', exam: 'Klausur oder Prüfung' }[l.status];
-    return `<div class=un-info>${row('Zeit', fmt(l.date) + ' · ' + l.start + '–' + l.end + (l.n > 1 ? ' (' + l.n + ' Stunden)' : ''))}${row('Raum', l.room)}${row('Lehrkraft', l.teacher)}${row('Kurs', l.subName && l.subName !== label(l) ? l.subName : '')}${row('Status', sx || '')}${l.note ? `<div class=un-note>${esc(l.note)}</div>` : ''}</div>`;
+    return `<div class=un-info>${row('Zeit', fmt(l.date) + ' · ' + l.start + '–' + l.end + (l.n > 1 ? ' (' + l.n + ' Stunden)' : ''))}${row('Raum', l.room)}${row('Lehrkraft', l.teacher)}${row('Kurs', l.subName && l.subName !== label(l) ? l.subName : '')}${row('Status', sx || '')}${row('Untis-Kennung', l.raw && l.raw !== 'STANDARD standard' ? l.raw : '')}${l.note ? `<div class=un-note>${esc(l.note)}</div>` : ''}</div>`;
   }
   function sheet(k, ls) {
     cur = { k, ls };
