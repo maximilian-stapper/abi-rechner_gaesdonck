@@ -426,7 +426,11 @@ const UntisUI = (() => {
         ? `<small class="d kp-nt">Mit <b>?</b>: LK-Klausur, falls dein Kurs (L1 oder L2) im angegebenen Band liegt. Nach dem Untis-Abgleich klärt sich das von selbst.</small>`
         : '',
       grid = `<div class=kp><div class="kp-wk kp-hd"><span>KW</span>${WD.slice(0, 5).map((d) => `<span>${d}</span>`).join('')}</div>${rows.join('')}</div>`;
-    return `<div class=g id=kp>${top}${next}${pastBtn}${grid}${unsure}<small class="d kp-nt">Tippe auf eine Klausur für Details und auf die KW, um die Woche oben im Stundenplan zu sehen. NT = Nachschreibtermin. Der Vertretungsplan in WebUntis hat Vorrang.</small></div>`;
+    // Ganz unten: eigene Klausuren in den eigenen Kalender (Apple, Google, Outlook) übernehmen
+    const exp = upcoming.filter((e) => !e.unsure),
+      skip = upcoming.length - exp.length,
+      cal = `<div class=kp-cal><button type=button class="bt pr" data-u=kpics${exp.length ? '' : ' disabled'}>In meinen Kalender eintragen</button><small class=d>${exp.length ? `Lädt eine Kalenderdatei mit ${exp.length === 1 ? 'deiner nächsten Klausur' : `deinen ${exp.length} anstehenden Klausuren`}: ganztägige Termine mit Erinnerung am Vortag. Datei öffnen und alle hinzufügen, z. B. im Apple-Kalender.${skip ? ` ${skip} LK-Klausur${skip === 1 ? '' : 'en'} mit ? ${skip === 1 ? 'ist' : 'sind'} nicht dabei.` : ''}` : 'Keine anstehenden Klausuren zum Eintragen.'}</small></div>`;
+    return `<div class=g id=kp>${top}${next}${pastBtn}${grid}${unsure}<small class="d kp-nt">Tippe auf eine Klausur für Details und auf die KW, um die Woche oben im Stundenplan zu sehen. Der Vertretungsplan in WebUntis hat Vorrang.</small>${cal}</div>`;
   }
 
   function kpSheet(e) {
@@ -438,6 +442,20 @@ const UntisUI = (() => {
     d.className = 'un';
     d.innerHTML = `<h3 style="--h:${hue(k)}"><span class=dot></span>${esc(US.name(k))}</h3><div class=dbody><div class=un-info>${row('Datum', WDL[wdOf(e.date)] + ', ' + dd.getDate() + '. ' + MOL[dd.getMonth()] + ' ' + dd.getFullYear())}${row('Art', e.dur ? 'Klausur, ' + e.dur + ' Minuten' : 'Mündliche Prüfung')}${e.lk ? row('LK-Band', e.band + (e.unsure ? ' (nur, wenn dein Kurs dazugehört)' : '')) : ''}${KL.notes(e).map((n) => row('Hinweis', n)).join('')}${row('Woche', 'KW ' + kw(e.date) + (e.date >= U.util.today() ? ', ' + kpIn(e.date, U.util.today()) : ''))}</div><p class=d>Aus dem ${esc(KP.titel)} (Stand ${esc(KP.stand)}). Der Vertretungsplan in WebUntis hat Vorrang.</p></div><div class=bar><button type=button class=bt data-u=kpwk data-w=${U.util.mon(e.date)}>Woche im Stundenplan</button><button type=button class="bt pr" data-u=x>Schließen</button></div>`;
     if (!d.open) d.showModal();
+  }
+  // Kalenderdatei (.ics) mit den anstehenden eigenen Klausuren herunterladen (ohne unsichere LK-Klausuren)
+  function kpIcs() {
+    const td = U.util.today(),
+      list = kpList.filter((e) => e.date >= td && !e.unsure);
+    if (!list.length) return;
+    const url = URL.createObjectURL(new Blob([KL.ics(list, (e) => US.name(kpKey(e)), new Date())], { type: 'text/calendar;charset=utf-8' })),
+      a = document.createElement('a');
+    a.href = url;
+    a.download = 'Klausuren-' + kpStufe() + '-' + KP.von.slice(0, 4) + '-HJ' + KP.hj + '.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
   // Woche oben im Stundenplan öffnen
   function kpWeek(w) {
@@ -828,6 +846,7 @@ const UntisUI = (() => {
       const x = kpList[+d.i];
       if (x) kpSheet(x);
     } else if (a == 'kpwk') kpWeek(d.w);
+    else if (a == 'kpics') kpIcs();
     else if (a == 'kpst') {
       uxSet({ stufe: d.v });
       render();

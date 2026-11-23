@@ -791,6 +791,19 @@ button.kp-kw:hover {
   display: block;
   margin-top: 8px;
 }
+.kp-cal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.kp-cal .bt[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
 @media (min-width: 560px) {
   .kp-d {
     min-height: 48px;

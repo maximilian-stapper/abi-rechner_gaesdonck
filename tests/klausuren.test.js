@@ -21,7 +21,9 @@ const cells = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, [v
 assert.deepStrictEqual(JSON.parse(JSON.stringify(KL.token('LK-T14-180 E:mdl'))), { band: 'T14', dur: 180, flags: [], per: { en: 'mdl' } });
 assert.deepStrictEqual(JSON.parse(JSON.stringify(KL.token('S9-180 hsv'))), { k: 'e9', dur: 180, flags: ['hsv'] });
 assert.strictEqual(KL.token('GoDi 8:45 Uhr').ev, 'GoDi 8:45 Uhr');
-assert.strictEqual(KL.token('NT').long, 'Nachschreibtermin');
+
+// Datenschutz: keine Nachschreibtermine im Plan (die Listen dazu enthalten Namen); kein Sternsingerimpuls
+for (const [d, e] of Object.entries(KP.tage)) for (const v of Object.values(e)) assert.ok(!/\bNT\b|sternsinger/i.test(v), d + ': ' + v);
 
 // Jeder Eintrag im Plan ist eine bekannte Klausur oder ein Termin (Tippfehler bei Fächern fallen hier auf)
 for (const [d, e] of Object.entries(KP.tage)) {
@@ -62,5 +64,20 @@ assert.deepStrictEqual(ef, ['2026-11-11 ma', '2027-01-15 ma']);
 const weeks = KL.build(KP, { stufe: 'Q1', idx: 0, cells: {}, lks: [] });
 assert.strictEqual(weeks.find((w) => w.mon === '2026-10-19').days.every((d) => d.off === 'Herbstferien'), true);
 assert.deepStrictEqual([...weeks.find((w) => w.mon === '2026-12-21').days.map((d) => d.off)], ['', '', 'Weihnachtsferien', 'Weihnachtsferien', 'Weihnachtsferien']);
+
+// Kalenderdatei: ganztägig, eindeutige UID, Sonderzeichen maskiert, Zeilen höchstens 75 Zeichen
+const ex = JSON.parse(JSON.stringify(KL.build(KP, { stufe: 'Q1', idx: 0, cells: cells({ ma: 'LK', en: 'LK' }), lks: ['ma', 'en'], lkNr: { ma: 2 } })))
+  .flatMap((w) => w.days.flatMap((d) => d.exams))
+  .filter((e) => e.date >= '2026-12-01');
+const ics = KL.ics(ex, (e) => (e.k === 'ma' ? 'Mathematik LK' : 'Englisch LK'), new Date('2026-11-23T20:00:00Z'));
+assert.ok(ics.startsWith('BEGIN:VCALENDAR\r\n') && ics.endsWith('END:VCALENDAR\r\n'));
+assert.strictEqual((ics.match(/BEGIN:VEVENT/g) || []).length, 2);
+assert.ok(ics.includes('DTSTART;VALUE=DATE:20261208\r\nDTEND;VALUE=DATE:20261209'));
+assert.ok(ics.includes('SUMMARY:Klausur Mathematik LK (180 Min.)'));
+assert.ok(ics.includes('SUMMARY:Mündliche Prüfung Englisch LK'));
+assert.ok(ics.includes('UID:20261215-en-lk@abi-rechner-gaesdonck'));
+assert.ok(ics.includes('DTSTAMP:20261123T200000Z'));
+assert.ok(ics.split('\r\n').every((l) => l.length <= 75));
+assert.ok(KL.ics([{ date: '2026-12-01', k: 'de', lk: false, dur: 90, flags: [] }], () => 'A, B; C', new Date()).includes('Klausur A\\, B\\; C'));
 
 console.log('klausuren: alle Prüfungen bestanden');
