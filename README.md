@@ -28,7 +28,7 @@ Each of the four exam results counts five times (max. 300). With an additional o
 
 ## Tests
 
-The `tests` folder is not needed on the website. It runs with Node.js (no packages): `node tests/rules.test.js`, `node tests/oracle.test.js` (compares the calculator with a brute-force search over all legal course sets for random students) and `node tests/e2e.js` (browser test, needs Playwright). `node tests/untis-worker.test.mjs` checks the Untis worker (CORS, allowed origin, fixed target host, forwarding, cookies, the whole Microsoft sign-in including wrong password, MFA and ADFS) together with `untis.js` using stand-ins for WebUntis and Microsoft, without a network. `node tests/untis-subjects.test.js` checks the recognition of all Q1 courses (264 cases), and `node tests/untis-mobile.test.js` checks the one-time code (RFC 6238 test vectors) and the homework request.
+The `tests` folder is not needed on the website. It runs with Node.js (no packages). `node tests/klausuren.test.js` checks that the exam calendar shows only your own written exams (Grundkurs exams only for S courses, LK exams only in your own band). `node tests/untis-worker.test.mjs` checks the Untis worker (CORS, allowed origin, fixed target host, forwarding, cookies, the whole Microsoft sign-in including wrong password, MFA and ADFS) together with `untis.js` using stand-ins for WebUntis and Microsoft, without a network. `node tests/untis-subjects.test.js` checks the recognition of all Q1 courses (264 cases), and `node tests/untis-mobile.test.js` checks the one-time code (RFC 6238 test vectors) and the homework request.
 
 ## LuPO import
 
