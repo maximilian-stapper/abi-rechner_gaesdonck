@@ -595,3 +595,208 @@ dialog.un[open] {
 .un-nt .lk {
   padding: 0 2px;
 }
+
+/* Klausurplan: eine Zeile pro Woche (KW | Mo–Fr), Klausuren in Fachfarbe, Ferien schraffiert */
+.kp {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+.kp-wk {
+  display: grid;
+  grid-template-columns: 34px repeat(5, minmax(0, 1fr));
+  column-gap: 3px;
+}
+.kp-hd span {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--d);
+  padding-bottom: 2px;
+}
+.kp-hd span:first-child {
+  font-size: 10px;
+  font-weight: 500;
+  align-self: end;
+}
+.kp-mo {
+  margin: 10px 0 2px 38px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--d);
+}
+.kp-mo:first-of-type {
+  margin-top: 2px;
+}
+.kp-kw {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--d);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+button.kp-kw:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.kp-kw.on {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  color: var(--t);
+}
+.kp-wk.cur .kp-kw {
+  background: rgba(77, 163, 255, 0.16);
+  color: var(--b);
+}
+.kp-d {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 40px;
+  padding: 15px 3px 3px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  min-width: 0;
+}
+.kp-d > i {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  font-style: normal;
+  font-size: 10px;
+  line-height: 12px;
+  color: var(--d);
+  font-variant-numeric: tabular-nums;
+}
+.kp-wk.cur .kp-d {
+  background: rgba(77, 163, 255, 0.06);
+}
+.kp-d.today {
+  box-shadow: inset 0 0 0 1px rgba(77, 163, 255, 0.55);
+}
+.kp-d.today > i {
+  color: var(--b);
+  font-weight: 700;
+}
+/* Ferien und freie Tage: schraffiert */
+.kp-d.off,
+.kp-off {
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.055) 0 5px, transparent 5px 10px);
+}
+.kp-ol {
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--d);
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+.kp-fw {
+  min-height: 34px;
+}
+.kp-fw .kp-kw {
+  cursor: default;
+  font-size: 11px;
+}
+.kp-off {
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--d);
+  font-size: 13px;
+}
+.kp-off b {
+  color: var(--t);
+  font-weight: 600;
+}
+/* Klausur: Fachfarbe wie im Stundenplan, Dauer darunter */
+.kp-x {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  width: 100%;
+  padding: 2px 3px 2px 4px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--h) 70% 62% / 0.55);
+  border-left: 3px solid hsl(var(--h) 75% 62%);
+  background: hsl(var(--h) 55% 45% / 0.35);
+  color: hsl(var(--h) 90% 90%);
+  text-align: left;
+  line-height: 1.15;
+  cursor: pointer;
+  min-width: 0;
+}
+.kp-x b {
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.kp-x small {
+  font-size: 10px;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+.kp-x.q {
+  border-style: dashed;
+  border-left-style: solid;
+  background: hsl(var(--h) 55% 45% / 0.18);
+}
+.kp-x.pa {
+  opacity: 0.5;
+}
+.kp-x:focus-visible,
+.kp-kw:focus-visible {
+  outline: 2px solid var(--b);
+  outline-offset: 1px;
+}
+.kp-ev {
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--d);
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+.kp-nx {
+  flex-wrap: wrap;
+  margin: 4px 0 4px;
+}
+.kp-nx small {
+  flex-basis: 100%;
+  padding-left: 18px;
+  color: var(--d);
+}
+.kp-cnt {
+  display: block;
+  margin: 0 0 6px 2px;
+}
+.kp-past {
+  display: block;
+  margin: 4px 0 2px;
+}
+.kp-nt {
+  display: block;
+  margin-top: 8px;
+}
+@media (min-width: 560px) {
+  .kp-d {
+    min-height: 48px;
+    padding: 16px 4px 4px;
+  }
+  .kp-x b {
+    font-size: 12px;
+  }
+}
