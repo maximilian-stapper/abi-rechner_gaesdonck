@@ -903,3 +903,18 @@ button.kp-kw:hover {
 #un-push .un-msg {
   margin-bottom: 8px;
 }
+
+/* Datenschutz (dialogs.js privacy) */
+.ds .dbody p {
+  font-size: 14px;
+  color: var(--d);
+  margin: 0 0 8px;
+}
+.ds .dbody p b,
+.ds .dbody a {
+  color: var(--t);
+}
+small .lk {
+  font-size: inherit;
+  padding: 0;
+}
