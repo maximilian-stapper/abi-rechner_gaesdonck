@@ -15,7 +15,7 @@
 const UntisPush = (() => {
   'use strict';
   const U = Untis,
-    WORKER = 'https://hausaufgaben-push.maximilian-stapper.workers.dev',
+    WORKER = 'https://push-worker.maximilian-stapper.workers.dev',
     KEY = (typeof K !== 'undefined' ? K : 'abirechner') + '.push', // { on, days, hour, id, vk, sig, at }
     DAYS = [1, 2, 3, 4, 5, 6, 7],
     HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
