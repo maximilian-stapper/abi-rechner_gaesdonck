@@ -44,11 +44,10 @@ const hw = [
 const out = JSON.parse(JSON.stringify(P.list(hw, '2026-11-24')));
 assert.deepStrictEqual(out.map((h) => h.d), ['2026-11-24', '2026-11-25', '2026-11-25', '2026-11-26', '2026-12-01']);
 assert.deepStrictEqual(out.map((h) => h.s), ['Mathematik', 'Deutsch LK', 'XY Z9', 'Mathematik', 'Hausaufgabe']);
-assert.strictEqual(out[3].t, 'S. 34 Nr. 5');
-assert.strictEqual(out[4].t.length, 160);
-assert.deepStrictEqual(Object.keys(out[0]).sort(), ['d', 's', 't']); // keine IDs, Lehrer oder Bemerkungen
+for (const h of out) assert.deepStrictEqual(Object.keys(h).sort(), ['d', 's']); // kein Aufgabentext, keine IDs, Lehrer oder Bemerkungen
+assert.doesNotMatch(JSON.stringify(out), /S\. 34|Gedicht|xxx/);
 assert.strictEqual(P.list(Array.from({ length: 80 }, (_, i) => ({ sub: 'ma', text: '', due: '2026-11-25', done: false })), '2026-11-24').length, 60);
-console.log('ok  Übertragen werden nur offene, nicht überfällige Hausaufgaben mit Fälligkeit: Datum, Fach, Text');
+console.log('ok  Übertragen werden nur Fach und Datum offener, nicht überfälliger Hausaufgaben, nie der Aufgabentext');
 
 assert.strictEqual(load().where(), 'ok');
 assert.strictEqual(load({ perm: 'denied' }).where(), 'denied');

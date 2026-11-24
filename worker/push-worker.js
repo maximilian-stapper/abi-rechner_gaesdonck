@@ -1,7 +1,8 @@
 // push-worker.js – Hausaufgaben-Erinnerungen per Web Push (Cloudflare Worker „push-worker“)
 //
 // Läuft unter https://push-worker.maximilian-stapper.workers.dev, getrennt vom Untis-Worker.
-// Die App schickt ihm ihre offenen Hausaufgaben (Fach, Fälligkeit, Text) und die Push-Adresse des Geräts.
+// Die App schickt ihm, in welchen Fächern wann Hausaufgaben offen sind (nur Fach und Fälligkeit, nie die
+// Aufgabe selbst), und die Push-Adresse des Geräts.
 // Einmal pro Stunde (Cron) sucht er alle Geräte, die zu dieser Uhrzeit erinnert werden wollen, und schickt
 // ihnen eine Mitteilung mit den Hausaufgaben, die in den nächsten Tagen fällig sind. Er meldet sich nie
 // selbst bei Untis an: neue Hausaufgaben kennt er erst, wenn die App sie beim Abgleich geschickt hat.
@@ -14,7 +15,7 @@
 //   POST /test   {id}                  sofort eine Mitteilung mit dem heutigen Stand schicken
 //   id = Zufallswert der App (wie ein Passwort für diesen Eintrag), sub = PushSubscription.toJSON(),
 //   days = 1–7 (ab wie vielen Tagen vor der Abgabe erinnern), hour = 0–23 (Uhrzeit in Deutschland),
-//   hw = [{d:'2026-11-25', s:'Mathe', t:'S. 34 Nr. 5'}] (nur offene)
+//   hw = [{d:'2026-11-25', s:'Mathe'}] (nur offene; ein mitgeschicktes Feld t wird verworfen)
 //
 // EINRICHTEN (Cloudflare-Dashboard, einmalig)
 //   1. Workers & Pages → Erstellen → Worker „push-worker“ → diesen Code einfügen → Deploy.
@@ -25,7 +26,7 @@
 //   löschen, sonst müssen alle Geräte die Erinnerungen neu einschalten (die App merkt das und tut es selbst).
 //
 // DATENSCHUTZ: Gespeichert werden nur die Push-Adresse des Geräts, die Einstellungen und Fach, Fälligkeit
-// und Text der offenen Hausaufgaben. Einträge verfallen nach 60 Tagen ohne Kontakt; „Ausschalten“ in der
+// der offenen Hausaufgaben, kein Aufgabentext. Einträge verfallen nach 60 Tagen ohne Kontakt; „Ausschalten“ in der
 // App löscht sofort. Keine Namen, keine Zugangsdaten. Logge keine Request-Bodies.
 
 const OK_ORIGINS = [
@@ -120,7 +121,7 @@ const cleanHw = (a) =>
   (Array.isArray(a) ? a : [])
     .filter((h) => h && /^\d{4}-\d{2}-\d{2}$/.test(h.d))
     .slice(0, 60)
-    .map((h) => ({ d: h.d, s: line(h.s, 40) || 'Hausaufgabe', t: line(h.t, 160) }));
+    .map((h) => ({ d: h.d, s: line(h.s, 40) || 'Hausaufgabe' })); // Aufgabentext wird nie gespeichert
 
 async function save(env, b) {
   const rec = { sub: cleanSub(b.sub), days: int(b.days, 1, 7, 1), hour: int(b.hour, 0, 23, 17), hw: cleanHw(b.hw), at: Date.now() };
@@ -197,11 +198,20 @@ function digest(rec, today) {
     b = addDay(today, rec.days || 1),
     hw = (rec.hw || []).filter((h) => h.d >= a && h.d <= b).sort((x, y) => x.d.localeCompare(y.d) || x.s.localeCompare(y.s));
   if (!hw.length) return null;
+  // Eine Zeile pro Tag mit den Fächern: „Morgen: Deutsch, Mathe (2)“
   const n = hw.length,
     soon = hw.every((h) => h.d === a),
     MAX = 4,
-    rows = hw.slice(0, n > MAX ? MAX - 1 : MAX).map((h) => when(h.d, today) + ': ' + h.s + (h.t ? ' – ' + line(h.t, 70) : ''));
-  if (n > MAX) rows.push('+ ' + (n - MAX + 1) + ' weitere');
+    days = [];
+  for (const h of hw) {
+    let g = days[days.length - 1];
+    if (!g || g.d !== h.d) days.push((g = { d: h.d, s: new Map() }));
+    g.s.set(h.s, (g.s.get(h.s) || 0) + 1);
+  }
+  const rows = days
+    .slice(0, days.length > MAX ? MAX - 1 : MAX)
+    .map((g) => when(g.d, today) + ': ' + [...g.s].map(([s, k]) => (k > 1 ? s + ' (' + k + ')' : s)).join(', '));
+  if (days.length > MAX) rows.push('+ ' + (days.length - MAX + 1) + ' weitere Tage');
   return {
     title: soon ? (n === 1 ? 'Hausaufgabe für morgen' : n + ' Hausaufgaben für morgen') : n === 1 ? '1 Hausaufgabe steht an' : n + ' Hausaufgaben stehen an',
     body: rows.join('\n'),

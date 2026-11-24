@@ -143,26 +143,27 @@ await t('/save: nur echte Push-Dienste, gültige Schlüssel und Zufalls-IDs; Wer
   assert.deepEqual(e.metadata, { h: 17 });
   assert.equal(e.ttl, 60 * 86400);
   assert.equal(rec.hw.length, 6); // „morgen“ ist kein Datum
-  assert.equal(rec.hw[1].t, 'Gedicht lesen und markieren');
   assert.equal(rec.hw[5].s.length, 40);
-  assert.equal(rec.hw[5].t.length, 160);
+  for (const h of rec.hw) assert.deepEqual(Object.keys(h).sort(), ['d', 's']); // mitgeschickter Aufgabentext wird verworfen
+  assert.doesNotMatch(e.v, /Gedicht|S\. 34|xxxx/);
   assert.deepEqual(Object.keys(rec).sort(), ['at', 'days', 'hour', 'hw', 'sub']);
 });
 
-await t('Text der Mitteilung: ab morgen bis „Tage vorher“, Heutiges und Späteres fehlen', async () => {
+await t('Text der Mitteilung: nur Fächer, eine Zeile pro Tag, ab morgen bis „Tage vorher“', async () => {
   const today = '2026-11-24';
   assert.equal(digest({ days: 1, hw: [{ d: '2026-11-24', s: 'A', t: '' }] }, today), null);
   const a = digest({ days: 1, hw }, today);
   assert.equal(a.title, '2 Hausaufgaben für morgen');
-  assert.equal(a.body, 'Morgen: Deutsch – Gedicht lesen und markieren\nMorgen: Mathe – S. 34 Nr. 5');
+  assert.equal(a.body, 'Morgen: Deutsch, Mathe');
   const b = digest({ days: 3, hw }, today);
   assert.equal(b.title, '3 Hausaufgaben stehen an');
-  assert.match(b.body, /^Morgen: Deutsch/);
-  assert.match(b.body, /Fr 27\.11\.: Englisch – Vokabeln Unit 3$/);
-  const c = digest({ days: 7, hw: Array.from({ length: 6 }, (_, i) => ({ d: '2026-11-26', s: 'F' + i, t: '' })) }, today);
-  assert.equal(c.body.split('\n').length, 4);
-  assert.match(c.body, /\n\+ 3 weitere$/);
-  assert.match(c.body, /^Übermorgen: F0/);
+  assert.equal(b.body, 'Morgen: Deutsch, Mathe\nFr 27.11.: Englisch');
+  const c = digest({ days: 7, hw: [{ d: '2026-11-26', s: 'Mathe' }, { d: '2026-11-26', s: 'Bio' }, { d: '2026-11-26', s: 'Mathe' }] }, today);
+  assert.equal(c.title, '3 Hausaufgaben stehen an');
+  assert.equal(c.body, 'Übermorgen: Bio, Mathe (2)');
+  const many = digest({ days: 7, hw: ['25', '26', '27', '28', '29', '30'].map((x) => ({ d: '2026-11-' + x, s: 'F' + x })) }, today);
+  assert.equal(many.body.split('\n').length, 4);
+  assert.match(many.body, /^Morgen: F25\nÜbermorgen: F26\nFr 27\.11\.: F27\n\+ 3 weitere Tage$/);
   assert.equal(digest({ days: 1, hw: [{ d: '2026-11-25', s: 'Mathe', t: '' }] }, today).title, 'Hausaufgabe für morgen');
   assert.equal(digest({ days: 7, hw: [{ d: '2026-11-30', s: 'Mathe', t: '' }] }, today).title, '1 Hausaufgabe steht an');
   assert.equal(digest({ days: 7, hw: [{ d: '2027-01-01', s: 'M', t: '' }] }, '2026-12-31').body, 'Morgen: M'); // Jahreswechsel
