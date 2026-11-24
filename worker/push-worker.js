@@ -1,6 +1,6 @@
-// push-worker.js – Hausaufgaben-Erinnerungen per Web Push (Cloudflare Worker „hausaufgaben-push“)
+// push-worker.js – Hausaufgaben-Erinnerungen per Web Push (Cloudflare Worker „push-worker“)
 //
-// Läuft unter https://hausaufgaben-push.maximilian-stapper.workers.dev, getrennt vom Untis-Worker.
+// Läuft unter https://push-worker.maximilian-stapper.workers.dev, getrennt vom Untis-Worker.
 // Die App schickt ihm ihre offenen Hausaufgaben (Fach, Fälligkeit, Text) und die Push-Adresse des Geräts.
 // Einmal pro Stunde (Cron) sucht er alle Geräte, die zu dieser Uhrzeit erinnert werden wollen, und schickt
 // ihnen eine Mitteilung mit den Hausaufgaben, die in den nächsten Tagen fällig sind. Er meldet sich nie
@@ -17,8 +17,8 @@
 //   hw = [{d:'2026-11-25', s:'Mathe', t:'S. 34 Nr. 5'}] (nur offene)
 //
 // EINRICHTEN (Cloudflare-Dashboard, einmalig)
-//   1. Workers & Pages → Erstellen → Worker „hausaufgaben-push“ → diesen Code einfügen → Deploy.
-//   2. Speicher & Datenbanken → KV → Namespace „hausaufgaben-push“ anlegen.
+//   1. Workers & Pages → Erstellen → Worker „push-worker“ → diesen Code einfügen → Deploy.
+//   2. Speicher & Datenbanken → KV → Namespace anlegen (Name egal, z. B. „push-storage“).
 //   3. Worker → Einstellungen → Bindungen → KV-Namespace hinzufügen: Variablenname PUSH, Namespace von oben.
 //   4. Worker → Einstellungen → Trigger-Ereignisse → Cron-Trigger: 0 * * * *   (jede volle Stunde)
 //   Die VAPID-Schlüssel erzeugt der Worker selbst und legt sie im KV unter „vapid“ ab. Diesen Eintrag nie

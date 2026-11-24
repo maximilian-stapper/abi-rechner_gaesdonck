@@ -65,7 +65,7 @@ function kv() {
 }
 let pushes = [], pushStatus = 201;
 globalThis.fetch = async (url, init) => { pushes.push({ url: String(url), init }); return new Response('', { status: typeof pushStatus === 'function' ? pushStatus(url) : pushStatus }); };
-const PAGES = 'https://maximilian-stapper.github.io', W = 'https://hausaufgaben-push.maximilian-stapper.workers.dev';
+const PAGES = 'https://maximilian-stapper.github.io', W = 'https://push-worker.maximilian-stapper.workers.dev';
 const ask = (env, p, o = {}) =>
   worker.fetch(new Request(W + p, { method: o.method || (o.body ? 'POST' : 'GET'), headers: { ...(o.origin === null ? {} : { Origin: o.origin || PAGES }), 'Content-Type': 'application/json' }, body: o.body ? JSON.stringify(o.body) : undefined }), env);
 const cron = async (env, iso) => {
