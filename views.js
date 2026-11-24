@@ -4,6 +4,7 @@ function render() {
   if (tab == 'un' || tab == 'kp') {
     // Untis-Planer und Klausuren (untis-ui.js)
     $('#app').innerHTML = top + UntisUI.view();
+    Motion.show(UntisUI.key());
     return;
   }
   const tabs = [
@@ -14,6 +15,7 @@ function render() {
   $('#app').innerHTML =
     top + `<nav class=tabs>${tabs.map(([k, l]) => `<button data-t="${k}" class="${k == tab ? 'on' : ''}">${l}</button>`).join('')}</nav>` +
     (tab == 'ov' ? ov() : tab == 'ab' ? ab() : qtab(+tab));
+  Motion.show('a:' + tab);
 }
 function ov() {
   const r = solve();
