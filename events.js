@@ -19,6 +19,7 @@ document.addEventListener('click', (e) => {
   else if (a == 'cx') $('#dlg').close();
   else if (a == 'sv') saveEdit(d.k);
   else if (a == 'menu') menu();
+  else if (a == 'dsg') privacy();
   else if (a == 'am') {
     $('#mr').insertAdjacentHTML('beforeend', mrow({ n: '' }));
     actv($('#mr').lastElementChild.querySelector('.sc'));

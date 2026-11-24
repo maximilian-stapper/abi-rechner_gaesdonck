@@ -70,7 +70,7 @@ Below the homework list in the Untis tab, the card **Erinnerungen** turns on a d
 
 ## Privacy and backups
 
-- All data stays local in your browser. There is no server, login, or data transfer.
+- Grades and the LuPO file stay local in your browser; nothing is uploaded. Only the Untis planner (worker `untis-worker`) and the optional reminders (worker `push-worker`) send data through Cloudflare, as described above. The app explains all of this in German under *Menü → Datenschutz* (`privacy()` in `dialogs.js`, also linked from the Untis setup and the reminders card).
 - Browsers may delete local data; Safari, for example, may do so after a long period of inactivity. Save a **backup file** regularly from the menu (⋯).
 - In a new browser, you can load the backup file when you first open the site and skip the setup.
 - Mobile tip: Add the site to your Home Screen.
