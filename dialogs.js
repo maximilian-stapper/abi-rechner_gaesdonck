@@ -125,7 +125,7 @@ function privacy() {
     ) +
     h(
       'Erinnerungen (nur wenn eingeschaltet)',
-      'Beim Erinnerungs-Worker liegen die Push-Adresse deines Geräts, deine Einstellungen und von den offenen Hausaufgaben Fach, Fälligkeit und Text. Keine Namen, keine Zugangsdaten. Die Mitteilung läuft über den Push-Dienst deines Geräts (Apple, Google oder Mozilla).',
+      'Beim Erinnerungs-Worker liegen nur die Push-Adresse deines Geräts, deine Einstellungen und, in welchem Fach wann offene Hausaufgaben fällig sind. Die Aufgaben selbst, Namen und Zugangsdaten bekommt er nicht. Die Mitteilung läuft über den Push-Dienst deines Geräts (Apple, Google oder Mozilla).',
       'Grundlage ist deine Einwilligung durch das Einschalten. <i>Ausschalten</i> widerruft sie und löscht alles sofort, sonst verfällt der Eintrag nach 60 Tagen ohne Kontakt. Wenn du unter 16 bist, frag vorher deine Eltern.',
     ) +
     h('Anbieter', 'Die Seite liegt bei GitHub (GitHub Pages), die Worker bei Cloudflare. Beide sind US-Unternehmen und nach dem EU-US Data Privacy Framework zertifiziert. Sie sehen bei jedem Aufruf technisch deine IP-Adresse und können Zugriffe kurz protokollieren (Zeit, Adresse, keine Inhalte).') +

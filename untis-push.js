@@ -3,7 +3,8 @@
  *
  * Weg: App → Erinnerungs-Worker (worker/push-worker.js, eigener Cloudflare-Worker mit KV und Cron)
  *      → Push-Dienst des Geräts (Apple, Google, Mozilla) → sw.js zeigt die Mitteilung.
- * Die App schickt dem Worker bei jeder Änderung ihre offenen Hausaufgaben (Fach, Fälligkeit, Text) und die
+ * Die App schickt dem Worker bei jeder Änderung, in welchen Fächern wann Hausaufgaben offen sind (nur Fach und
+ * Fälligkeit, nie die Aufgabe selbst), und die
  * Einstellungen. Der Worker erinnert jeden Tag zur gewählten Uhrzeit an alles, was ab morgen bis in
  * „Tage vorher“ Tagen fällig ist, so lange es nicht abgehakt ist. Er meldet sich nie selbst bei Untis an.
  *
@@ -45,14 +46,14 @@ const UntisPush = (() => {
       return String(h);
     };
 
-  // ---------- Was der Worker bekommt: nur offene, nicht überfällige Hausaufgaben mit Fälligkeit ----------
+  // ---------- Was der Worker bekommt: Fach und Fälligkeit offener, nicht überfälliger Hausaufgaben, kein Text ----------
   const nm = (h) => (h.sub && typeof UntisSubjects !== 'undefined' ? UntisSubjects.name(h.sub) : '') || h.subName || 'Hausaufgabe';
   const list = (hw, today) =>
     hw
       .filter((h) => !h.done && h.due && h.due >= today)
       .sort((a, b) => a.due.localeCompare(b.due))
       .slice(0, 60)
-      .map((h) => ({ d: h.due, s: nm(h).slice(0, 40), t: String(h.text || '').replace(/\s+/g, ' ').trim().slice(0, 160) }));
+      .map((h) => ({ d: h.due, s: nm(h).slice(0, 40) }));
 
   // ---------- Kann dieses Gerät Mitteilungen? ----------
   const ios = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
@@ -292,10 +293,10 @@ const UntisPush = (() => {
           ? `<button type=button class=bt data-u=nttest${dis}>Test-Mitteilung</button><button type=button class=bt data-u=ntoff${dis}>Ausschalten</button>`
           : `<button type=button class="bt pr" data-u=nton${dis}>Erinnerungen einschalten</button>`,
         note = on
-          ? `${c.at ? `Zuletzt an den Worker geschickt: ${new Date(c.at).toLocaleString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}${c.n != null ? `, ${c.n} offene Hausaufgabe${c.n === 1 ? '' : 'n'}` : ''}. ` : ''}Neue Hausaufgaben aus Untis kommen dazu, sobald die App abgleicht (beim Öffnen). Fach, Fälligkeit und Text der offenen Hausaufgaben liegen dafür beim Erinnerungs-Worker; Ausschalten löscht sie dort. <button type=button class=lk data-a=dsg>Datenschutz</button>`
-          : 'Dafür schickt die App Fach, Fälligkeit und Text deiner offenen Hausaufgaben an den Erinnerungs-Worker, sonst nichts (keine Namen, keine Zugangsdaten). <button type=button class=lk data-a=dsg>Datenschutz</button>';
+          ? `${c.at ? `Zuletzt an den Worker geschickt: ${new Date(c.at).toLocaleString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}${c.n != null ? `, ${c.n} offene Hausaufgabe${c.n === 1 ? '' : 'n'}` : ''}. ` : ''}Neue Hausaufgaben aus Untis kommen dazu, sobald die App abgleicht (beim Öffnen). Dafür kennt der Erinnerungs-Worker nur Fach und Fälligkeit, nicht die Aufgabe selbst; Ausschalten löscht das dort. <button type=button class=lk data-a=dsg>Datenschutz</button>`
+          : 'Dafür bekommt der Erinnerungs-Worker nur, in welchem Fach wann etwas fällig ist, nicht die Aufgabe selbst (keine Namen, keine Zugangsdaten). <button type=button class=lk data-a=dsg>Datenschutz</button>';
       body =
-        `<p class=d>${on ? 'Jeden Tag um ' + c.hour + ' Uhr kommt' : 'Bekomm jeden Tag um ' + c.hour + ' Uhr'} eine Mitteilung mit allen offenen Hausaufgaben, die ${span} fällig sind. Abgehakte fallen raus.</p>` +
+        `<p class=d>${on ? 'Jeden Tag um ' + c.hour + ' Uhr kommt' : 'Bekomm jeden Tag um ' + c.hour + ' Uhr'} eine Mitteilung, in welchen Fächern ${span} Hausaufgaben fällig sind. Abgehakte fallen raus.</p>` +
         (w === 'denied' ? `<p class="d bad">Mitteilungen sind für diese App blockiert. Erlaube sie in den Einstellungen des Geräts (iPhone: Einstellungen → Mitteilungen → Abi-Rechner).</p>` : '') +
         `<div class=un-pf>${rows}</div><div class=bar style="justify-content:flex-start;flex-wrap:wrap">${bar}</div>` +
         (on && lastErr ? `<small class="d bad un-pn">Letzte Übertragung hat nicht geklappt: ${esc(lastErr)}</small>` : '') +
