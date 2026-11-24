@@ -258,6 +258,14 @@ th {
 .cell[data-v='ZK'] {
   background: rgba(180, 140, 255, 0.3);
 }
+/* Projektkurs (Abitur ab 2030): fest eingetragen, nicht antippbar */
+.cell[data-v='PK'] {
+  background: rgba(76, 210, 122, 0.28);
+}
+.cell.fx {
+  cursor: default;
+  opacity: 0.8;
+}
 dialog {
   background: #232327;
   color: var(--t);
@@ -503,4 +511,20 @@ dialog.ed[open] {
   .pc {
     transition: none;
   }
+}
+/* Beta-Kennzeichnung der Rechnung ab dem Abitur 2030 */
+.beta {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1d1300;
+  background: var(--w);
+  border-radius: 6px;
+  padding: 1px 6px;
+  vertical-align: 2px;
+}
+.betabox {
+  border-color: rgba(232, 176, 74, 0.45);
 }

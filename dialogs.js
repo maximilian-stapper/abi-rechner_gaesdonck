@@ -61,16 +61,32 @@ function edit(k) {
   const c = courses().find((x) => x.k == k),
     g = st.g[k] || {},
     b = c.t == 'B',
-    sc = c.t == 'S' || c.t == 'LK',
+    pk = c.t == 'PK', // Projektkurs ab 2030: je Halbjahr ein Produkt als schriftliche Arbeit (§ 14 Abs. 3)
+    sc = c.t == 'S' || c.t == 'LK' || pk,
+    nu = isNeu(st),
+    // Hinweis unter „Schriftlich“: bis 2029 ersetzt die Facharbeit eine Klausur in Q1.2; ab 2030 gibt es keine
+    // Facharbeit mehr, dafür gleichwertige komplexe Leistungsnachweise (nur Grundkurse, Q1.1 bis Q2.1) und in modernen
+    // Fremdsprachen mündliche Kommunikationsprüfungen; beide zählen zum Bereich „Schriftliche Arbeiten“ (§ 14 Abs. 1).
+    mfs = ['en', 'fr', 'es', 'e9'].includes(c.id), // moderne Fremdsprache
+    alt = [c.t != 'LK' && 'gleichwertiger komplexer Leistungsnachweis', mfs && 'mündliche Kommunikationsprüfung'].filter(Boolean),
+    hint = pk
+      ? '<small>Pro Halbjahr ein Produkt; es zählt wie eine Klausur und zur Hälfte in die Kursnote.</small>'
+      : nu
+        ? c.i < 3 && alt.length
+          ? `<small>${alt.join(' oder ').replace(/^./, (x) => x.toUpperCase())} in diesem Halbjahr? Das zählt wie eine Klausur: trag die Note hier ein.</small>`
+          : ''
+        : c.i == 1
+          ? '<small>Facharbeit in diesem Fach? Sie ersetzt eine Klausur: trag ihre Note einfach als Klausur ein.</small>'
+          : '',
     d = $('#dlg');
   d.className = 'ed';
   d.innerHTML =
-    `<h3>${esc(nm(c))}</h3><div class=dbody>` +
+    `<h3>${esc(nm(c))}${pk ? ' ' + SEM[c.i] : ''}</h3><div class=dbody>` +
     (b
       ? '<small>Eine Note zählt für Q1.1 und Q1.2 (doppelt). Freiwillig: Sie wird nur eingebracht, wenn sie deinen Schnitt verbessert.</small>'
       : `<h4>Mündlich (Gewicht optional)</h4><div id=mr>${(g.m && g.m.length ? g.m : [{ n: '', w: '' }]).map(mrow).join('')}</div><button class=bt data-a=am>+ Note</button>` +
         (sc
-          ? `<h4>Schriftlich</h4>${c.i == 1 ? '<small>Facharbeit in diesem Fach? Sie ersetzt eine Klausur: trag ihre Note einfach als Klausur ein.</small>' : ''}<div id=sr>${(g.s && g.s.length ? g.s : ['']).map(srow).join('')}</div><button class=bt data-a=as>+ Klausur</button>`
+          ? `<h4>${pk ? 'Produkt (schriftliche Arbeit)' : 'Schriftlich'}</h4>${hint}<div id=sr>${(g.s && g.s.length ? g.s : ['']).map(srow).join('')}</div><button class=bt data-a=as>${pk ? '+ Produkt' : '+ Klausur'}</button>`
           : '')) +
     `<h4>Endnote (von der Lehrkraft festgelegt)</h4><div class=ir>${sv(g.f ?? '', 'leer = vorläufig', 'fin')}</div></div>` +
     `<div class=dock><div class=dh><span>Tippe auf eine Note</span><button type=button class=lk data-a=pc data-p="">Feld leeren</button></div><div class=scale>${scale()}</div><div class=bar><button class=bt data-a=cx>Abbrechen</button><button class="bt pr" data-a=sv data-k="${k}">Speichern</button></div></div>`;

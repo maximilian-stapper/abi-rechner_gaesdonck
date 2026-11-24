@@ -28,24 +28,40 @@ document.addEventListener('click', (e) => {
     actv($('#sr').lastElementChild.querySelector('.sc'));
   }
   else if (a == 'next') {
-    step = 2;
+    // Einrichtung: 0 Abiturjahrgang → 1 Fächer → 2 Abiturfächer
+    if (step == 0 && !W.y) {
+      $('#msg').textContent = 'Bitte wähle dein Abiturjahr.';
+      return;
+    }
+    step = Math.min(2, step + 1);
     wiz();
     scrollTo(0, 0);
   } else if (a == 'prev') {
-    step = 1;
+    step = Math.max(0, step - 1);
     wiz();
     scrollTo(0, 0);
   } else if (a == 'back') {
     W = null;
     impInfo = null;
-    step = 1;
+    step = 0;
     render();
   } else if (a == 'fin') finish();
-  else if (a == 'wz') {
+  else if (a == 'ysv') {
+    // Nur den Abiturjahrgang speichern (die Prüfungsordnung ändert sich dadurch nicht)
+    st.y = W.y;
+    st.q1alt = !!W.q1alt;
+    fit(st);
+    W = null;
+    step = 0;
+    save();
+    render();
+  } else if (a == 'wz' || a == 'yr') {
+    // Einrichtung öffnen (Menü) bzw. Abiturjahrgang nachtragen (Hinweis in der Übersicht)
     $('#dlg').close();
     W = null;
-    step = 1;
+    step = 0;
     wiz();
+    scrollTo(0, 0);
   } else if (a == 'ex') {
     const u = URL.createObjectURL(
         new Blob([JSON.stringify({ ...st, untis: Untis.backup() })], { type: 'application/json' }),
@@ -70,14 +86,24 @@ document.addEventListener('click', (e) => {
     st = null;
     tab = 'ov';
     W = null;
-    step = 1;
+    step = 0;
     $('#dlg').close();
     wiz();
   }
 });
 document.addEventListener('change', (e) => {
   const t = e.target;
-  if (t.dataset.x) {
+  if (t.id == 'yr' || t.id == 'q1alt') {
+    // Abiturjahrgang (Einrichtung, Schritt 1): Regeln sofort anpassen (Projektkurs-Zeile, 5. Abiturfach)
+    if (t.id == 'yr') W.y = +t.value || undefined;
+    else W.q1alt = t.checked;
+    if (!(W.y >= NEU_AB && W.y <= NEU_AB + 1)) W.q1alt = false;
+    fit(W);
+    wiz();
+  } else if (t.id == 'vk') {
+    W.vk = Math.min(12, Math.max(0, Math.round(+t.value) || 0));
+    t.value = W.vk;
+  } else if (t.dataset.x) {
     const [n, f] = t.dataset.x.split('.');
     st.x[n] = st.x[n] || {};
     st.x[n][f] = cl(t.value);
@@ -106,7 +132,7 @@ document.addEventListener('change', (e) => {
           UntisUI.defaults(); // feste Adressen auffüllen, falls die Sicherung sie nicht enthält
         }
         W = null;
-        step = 1;
+        step = 0;
         save();
         $('#dlg').close();
         tab = 'ov';
