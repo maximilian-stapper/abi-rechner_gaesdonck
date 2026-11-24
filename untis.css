@@ -880,3 +880,26 @@ button.kp-kw:hover {
 #ud[hidden] {
   display: none;
 }
+
+/* Erinnerungen (untis-push.js) */
+.un-pon {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ok);
+  padding: 2px 10px;
+  border-radius: 99px;
+  background: rgba(76, 210, 122, 0.14);
+}
+.un-pf {
+  margin-top: 12px;
+}
+.un-pn {
+  display: block;
+  margin-top: 10px;
+}
+#un-push .bar {
+  margin-top: 8px;
+}
+#un-push .un-msg {
+  margin-bottom: 8px;
+}

@@ -12,7 +12,8 @@ const UntisUI = (() => {
   'use strict';
   const U = Untis,
     US = UntisSubjects,
-    UM = UntisMobile;
+    UM = UntisMobile,
+    UP = UntisPush; // Hausaufgaben-Erinnerungen (Karte unter den Hausaufgaben)
 
   // Zeitrahmen des Plans: nur dieser Bereich wird gezeigt (Termine außerhalb werden gekürzt oder ausgeblendet)
   const FROM = '07:55',
@@ -138,6 +139,7 @@ const UntisUI = (() => {
       localStorage.removeItem(SS);
       localStorage.removeItem(SP);
     } catch (e) {}
+    UP.reset(); // Erinnerungen aus, Kopie beim Erinnerungs-Worker löschen
   }
   function defaults() {} // feste Adressen setzt untis.js selbst (bleibt für events.js erhalten)
   U.setResolver(US.resolve);
@@ -333,7 +335,7 @@ const UntisUI = (() => {
         .join('');
     const hwCard = `<div class=g><div class=un-hh><h2>Hausaufgaben</h2><div class=un-tg role=group aria-label="Anzeige"><button type=button data-u=hwall data-v=0 aria-pressed="${!hwAll}" class="${!hwAll ? 'on' : ''}">Offen</button><button type=button data-u=hwall data-v=1 aria-pressed="${hwAll}" class="${hwAll ? 'on' : ''}">Alle</button></div></div>${chips ? `<div class=un-chips>${chips}</div>` : ''}${list.length ? list.map((h) => hwItem(h, true, reg)).join('') : `<p class=d style="margin:10px 0">${hwAll ? 'Noch keine Hausaufgaben.' : 'Keine offenen Hausaufgaben.'}</p>`}<div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=hwnew data-k="">+ Hausaufgabe</button></div></div>`;
 
-    return banner + first + nxt + planCard + hwCard + `<small class=d>Stundenplan und Hausaufgaben liegen nur in diesem Browser. Fremde Angaben (Räume, Lehrkräfte, Aufgaben) stammen aus Untis und sind ohne Gewähr.</small>`;
+    return banner + first + nxt + planCard + hwCard + (has ? UP.card() : '') + `<small class=d>Stundenplan und Hausaufgaben liegen nur in diesem Browser. Fremde Angaben (Räume, Lehrkräfte, Aufgaben) stammen aus Untis und sind ohne Gewähr.</small>`;
   }
 
   // ---------- Klausurplan (klausurplan.js + klausuren.js) ----------
@@ -857,7 +859,8 @@ const UntisUI = (() => {
     } else if (a == 'today') {
       wk = homeWeek();
       render();
-    } else if (a == 'setup') go('setup');
+    } else if (a.slice(0, 2) == 'nt') UP.act(a); // Erinnerungen (untis-push.js)
+    else if (a == 'setup') go('setup');
     else if (a == 'plan') go('plan');
     else if (a == 'mx') {
       msg = null;
@@ -952,7 +955,7 @@ const UntisUI = (() => {
       dlg().close();
       doSync({ pass: v, rem: !!(r && r.checked) });
     } else if (a == 'x') dlg().close();
-    else if (a == 'rmdata' && confirm('Stundenplan, Hausaufgaben, Kalender-Link und Schlüssel auf diesem Gerät löschen?')) {
+    else if (a == 'rmdata' && confirm('Stundenplan, Hausaufgaben, Kalender-Link und Schlüssel auf diesem Gerät löschen? Erinnerungen werden ausgeschaltet.')) {
       U.reset();
       wipe();
       defaults();
@@ -1001,6 +1004,7 @@ const UntisUI = (() => {
       return;
     }
     if (!f || f == 'pw') return;
+    if (f.slice(0, 2) == 'nt') return UP.set(f, t.value); // Erinnerungen: Tage vorher, Uhrzeit
     if (f == 'ical') {
       const v = t.value.trim();
       uxSet({ ical: v });

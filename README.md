@@ -28,7 +28,7 @@ Each of the four exam results counts five times (max. 300). With an additional o
 
 ## Tests
 
-The `tests` folder is not needed on the website. It runs with Node.js (no packages). `node tests/klausuren.test.js` checks that the exam calendar shows only your own written exams (Grundkurs exams only for S courses, LK exams only in your own band). `node tests/untis-worker.test.mjs` checks the Untis worker (CORS, allowed origin, fixed target host, forwarding, cookies, the whole Microsoft sign-in including wrong password, MFA and ADFS) together with `untis.js` using stand-ins for WebUntis and Microsoft, without a network. `node tests/untis-subjects.test.js` checks the recognition of all Q1 courses (264 cases), and `node tests/untis-mobile.test.js` checks the one-time code (RFC 6238 test vectors) and the homework request.
+The `tests` folder is not needed on the website. It runs with Node.js (no packages). `node tests/klausuren.test.js` checks that the exam calendar shows only your own written exams (Grundkurs exams only for S courses, LK exams only in your own band). `node tests/untis-worker.test.mjs` checks the Untis worker (CORS, allowed origin, fixed target host, forwarding, cookies, the whole Microsoft sign-in including wrong password, MFA and ADFS) together with `untis.js` using stand-ins for WebUntis and Microsoft, without a network. `node tests/untis-subjects.test.js` checks the recognition of all Q1 courses (264 cases), `node tests/untis-mobile.test.js` checks the one-time code (RFC 6238 test vectors) and the homework request. `node tests/push-worker.test.mjs` checks the reminder worker: the encryption reproduces the example from RFC 8291 byte for byte, a simulated browser decrypts the notification, the VAPID signature verifies, plus CORS, allowed push services, storage and the hourly reminder (winter and summer time). `node tests/untis-push.test.js` checks what the app sends to that worker and where it offers notifications at all.
 
 ## Updates (version number)
 
@@ -59,6 +59,15 @@ The **Untis** button next to *Abi-Rechner* at the top opens a timetable and home
 - **Privacy:** e-mail, a remembered password, the calendar link and the Untis Mobile key are stored only on this device (never in the backup file). When signing in, e-mail and password pass through the worker to Microsoft; the worker stores and logs nothing. Run only this worker and do not share its code with secrets added. Timetable and homework stay in this browser and are part of the backup file (without any login data).
 - Text from Untis (subjects, teachers, rooms, homework) is always escaped before it is shown.
 
+## Homework reminders (push notifications)
+
+Below the homework list in the Untis tab, the card **Erinnerungen** turns on a daily notification: every day at the chosen time (06:00 to 22:00) you get one message listing all open homework due within the chosen number of days (*nur am Vortag* up to *ab einer Woche vorher*). Homework due today is left out, ticked-off homework drops out, so each task is repeated every day until it is done. *Test-Mitteilung* sends one right away.
+
+- **How it works:** the app sends its open homework (subject, due date, text; nothing else) and the device's push address to a second Cloudflare worker, `worker/push-worker.js` (`hausaufgaben-push`). It keeps them in Workers KV and, once an hour (cron), sends the reminders via Web Push (VAPID, RFC 8292; payload encrypted with aes128gcm, RFC 8291) to Apple, Google or Mozilla. `sw.js` (a service worker with no cache and no fetch handler) shows the notification; tapping it opens the Untis tab. The worker never signs in to Untis: new homework reaches it whenever the app syncs (on opening) or you add or tick off something.
+- **iPhone/iPad:** only in the app added to the Home Screen (iOS 16.4 or later); `manifest.webmanifest` makes the page a standalone web app. In a Safari tab the card explains how to add it. If the Home Screen app was added before the manifest existed and the button does not appear, save a backup file first (removing the app also removes its data), then remove it and add it again.
+- **Set up the worker once** (Cloudflare dashboard): create the worker `hausaufgaben-push` and paste `worker/push-worker.js`, create a KV namespace and bind it to the worker as `PUSH`, add the cron trigger `0 * * * *`, deploy. The worker creates its VAPID keys itself on the first call and stores them in KV under `vapid`; if they are ever lost, the app notices and subscribes again with the new key. `index.html` already allows `https://hausaufgaben-push.maximilian-stapper.workers.dev` in `connect-src`; `OK_ORIGINS` in the worker must contain the Pages origin.
+- **Privacy:** stored per device are only the push address, the settings and subject, due date and text of open homework (no names, no login data). Entries expire after 60 days without contact; *Ausschalten* (and *Alle Untis-Daten löschen*) deletes them right away. The worker only sends to known push services.
+
 ## Privacy and backups
 
 - All data stays local in your browser. There is no server, login, or data transfer.
@@ -80,4 +89,4 @@ The calculation logic was tested against the four sample academic pathways in th
 
 ## Publishing (GitHub Pages)
 
-Upload the whole project (`index.html` plus all `.js` and `.css` files, the icon, `mdb-reader.js` and the `worker` folder) to a repository. Under *Settings → Pages*, select the `main` branch and the `/ (root)` folder.
+Upload the whole project (`index.html` plus all `.js` and `.css` files, the icon, `manifest.webmanifest`, `sw.js`, `mdb-reader.js` and the `worker` folder) to a repository. Under *Settings → Pages*, select the `main` branch and the `/ (root)` folder.
