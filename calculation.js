@@ -1,21 +1,27 @@
+// Fächer des Rechners; ab dem Abitur 2030 kommt der Projektkurs (Q2, Pflicht) als eigene Zeile dazu.
+const subs = () => (isNeu(st) ? [...S, ['pk', 'Projektkurs']] : S);
 function courses() {
   const a = [];
-  for (const [id] of S)
+  for (const [id] of subs())
     (st.cells[id] || []).forEach((t, i) => {
       if (t) a.push({ k: id + '.' + i, id, i, t });
     });
-  // Projektkurs bzw. Advanced Class: eine Note (Ende Q1.2), freiwillig einzubringen
-  for (const type of Object.keys(SP))
-    if (st.sp[type])
-      a.push({ k: 'sp_' + type, id: 'sp_' + type, sp: type, i: -1, t: 'B' });
+  // Bis zum Abitur 2029: Projektkurs bzw. Advanced Class in Q1, eine Note (Ende Q1.2), freiwillig einzubringen.
+  // Ab 2030 gibt es das nicht mehr; der Projektkurs liegt dann in der Q2 und steht oben in den Zellen (pk.2, pk.3).
+  if (!isNeu(st))
+    for (const type of Object.keys(SP))
+      if (st.sp[type])
+        a.push({ k: 'sp_' + type, id: 'sp_' + type, sp: type, i: -1, t: 'B' });
   return a;
 }
 const nm = (c) =>
   c.t == 'B'
     ? SP[c.sp] + (st.sp[c.sp].name ? ': ' + st.sp[c.sp].name : '')
-    : NM[c.id];
+    : c.id == 'pk' && st.pj && st.pj.name
+      ? FN('pk') + ': ' + st.pj.name
+      : FN(c.id);
 // Name mit Halbjahr, z. B. „Chemie Q2.1"
-const cname = (c) => (c.t == 'B' ? nm(c) : NM[c.id] + ' ' + SEM[c.i]);
+const cname = (c) => (c.t == 'B' ? nm(c) : FN(c.id) + ' ' + SEM[c.i]);
 function pts(c) {
   const g = st.g[c.k] || {};
   if (g.f !== undefined && g.f !== null && g.f !== '')
@@ -34,8 +40,10 @@ function pts(c) {
         : m.reduce((a, r) => a + +r.n, 0) / m.length
       : null,
     w = s.length ? s.reduce((a, v) => a + +v, 0) / s.length : null;
+  // Kurse mit schriftlichen Arbeiten: „Schriftliche Arbeiten“ und „Sonstige Mitarbeit“ gleichwertig (§ 13 Abs. 1).
+  // Im Projektkurs (ab 2030) ist die schriftliche Arbeit das Produkt des Halbjahres (§ 14 Abs. 1 und 3).
   const p =
-    o == null ? w : w == null ? o : c.t == 'S' || c.t == 'LK' ? (o + w) / 2 : o;
+    o == null ? w : w == null ? o : c.t == 'S' || c.t == 'LK' || c.t == 'PK' ? (o + w) / 2 : o;
   return { p: p == null ? null : R(p), fin: 0 };
 }
 
@@ -90,18 +98,33 @@ function items() {
 // Zuordnungen durchprobiert (oder die in der Einrichtung festgelegte genommen). Zu jeder Zuordnung steht damit
 // die Pflichtmenge fest. Den Rest füllt eine exakte Auswahl auf: Kurse in der Reihenfolge ihrer Punkte, für jede
 // zulässige Gesamtzahl, danach gewinnt der beste Schnitt.
+//
+// Ab dem Abitur 2030 (APO-GOSt (2027), § 26, § 27) ist die Pflichtmenge fast gleich (§ 26 Abs. 3 bis 7 entsprechen
+// § 28 Abs. 3 bis 8 alt, VV 26.3.1 der VV 28.3.1). Anders ist:
+//  - fünf Abiturfächer mit je 4 Kursen (§ 26 Abs. 2). Ist das 5. Abiturfach das Referenzfach des Projektkurses,
+//    zählen davon nur die beiden Q1-Kurse (dazu die zwei Projektkurs-Halbjahre). Mit Besonderer Lernleistung im
+//    5. Fach entfällt die Pflicht, dieses Fach mit 4 Kursen einzubringen.
+//  - der Projektkurs (Q2.1 und Q2.2) ist Pflicht und zählt immer mit beiden Halbjahresergebnissen (§ 26 Abs. 3).
+//    An der Gaesdonck kann eine Advanced Class an seine Stelle treten; sie wird genauso gerechnet.
+//  - es zählen genau 36 Kurse (8 LK + 28 weitere), höchstens 7 Defizite, davon höchstens 3 LK; 40 Kurse belegt.
 // ---------------------------------------------------------------------------
 function solve() {
   const C = items();
   if (!C) return null;
   const I = {};
   C.forEach((c) => (I[c.k] = c));
+  const nu = isNeu(st), // Abitur ab 2030
+    a5 = nu ? (S.find(([id]) => st.af[id] == 5) || [])[0] : undefined, // 5. Abiturfach
+    ref = nu && st.pj ? st.pj.ref : undefined, // Referenzfach des Projektkurses
+    ref5 = nu && !st.bll && !!a5 && a5 == ref, // 5. Abiturfach = Referenzfach (§ 26 Abs. 2 Satz 2)
+    skip5 = nu && !!a5 && (!!st.bll || ref5); // 5. Abiturfach muss nicht mit allen 4 Kursen zählen
   const ce = (id) => st.cells[id] || [],
     ks = (id) => [0, 1, 2, 3].filter((i) => ce(id)[i]).map((i) => id + '.' + i),
     ok = (k) => !!I[k] && I[k].p > 0, // anrechenbar (mindestens 1 Punkt)
     aks = (id) => ks(id).filter(ok),
     full = (id) => aks(id).length == 4,
-    top = (id) => ce(id).includes('LK') || st.af[id] > 0,
+    // Fach, dessen Kurse ohnehin alle zählen: Leistungskurs oder Abiturfach (ab 2030 ohne die Sonderfälle im 5. Fach)
+    top = (id) => ce(id).includes('LK') || (st.af[id] > 0 && !(skip5 && id == a5)),
     byP = (a, b) => I[b].p - I[a].p,
     nz2 = !!st.nz2, // keine zweite Fremdsprache in der Sek. I (§ 28 Abs. 4 und 5)
     pf = {};
@@ -114,8 +137,10 @@ function solve() {
       return t.length ? [t[0]] : f.length ? f : [undefined];
     },
     // Ein Fach, das ohnehin komplett zählt (LK/Abiturfach), ist immer die günstigste Wahl.
-    fsC = pf.fs ? [pf.fs] : one(FS),
-    nwC = pf.nw ? [pf.nw] : one(NW),
+    // Ein festgelegtes Schwerpunktfach ist eine *weitere* Fremdsprache bzw. ein *weiteres* MINT-Fach (§ 8 Abs. 2),
+    // kann also nicht zugleich die Fremdsprache oder die Naturwissenschaft sein.
+    fsC = pf.fs ? [pf.fs] : one(FS.filter((id) => id != pf.sf)),
+    nwC = pf.nw ? [pf.nw] : one(NW.filter((id) => id != pf.sf)),
     gwC = pf.gw ? [pf.gw] : one(GW),
     sfC = (fs, nw) => {
       if (pf.sf) return [pf.sf];
@@ -149,6 +174,16 @@ function solve() {
         if (c.length < need) viol.add(NM[id] + ': mindestens 2 Kurse mit Punkten nötig');
       };
     S.forEach(([id]) => top(id) && all(id, 'Abiturfach'));
+    // Halbjahre i eines Fachs: müssen belegt sein und mindestens 1 Punkt haben, dann zählen sie
+    const need = (id, l, is) =>
+      is.forEach((i) => {
+        const k = id + '.' + i;
+        if (!ce(id)[i]) viol.add(l + ' ' + SEM[i] + ': nicht belegt');
+        else if (!ok(k)) viol.add(l + ' ' + SEM[i] + ': 0 Punkte, gilt als nicht belegt');
+        else must.add(k);
+      });
+    if (ref5) need(a5, '5. Abiturfach (Referenzfach) ' + NM[a5], [0, 1]);
+    if (nu) need('pk', FN('pk'), [2, 3]);
     ['de', 'ma'].forEach((id) => top(id) || all(id));
     [
       [a.fs, 'Fremdsprache'],
@@ -167,6 +202,8 @@ function solve() {
     );
     ['ge', 'sw'].forEach(two);
     two('re');
+    if (a.sf && (a.sf == a.fs || a.sf == a.nw))
+      viol.add('Schwerpunktfach ' + NM[a.sf] + ': muss ein anderes Fach sein als die Fremdsprache bzw. die Naturwissenschaft');
     if (a.sf) {
       top(a.sf) || chk(a.sf, 'Schwerpunktfach');
       [2, 3].forEach((i) => ok(a.sf + '.' + i) && must.add(a.sf + '.' + i));
@@ -196,7 +233,10 @@ function solve() {
   // --- Beste Auswahl zu einer Pflichtmenge ---------------------------------
   const Bs = C.filter((c) => c.t == 'B' && c.p > 0),
     mult = (c) => (c.t == 'B' ? SPW[c.sp] : 1),
-    lim = (cnt) => (cnt <= RULE.split ? RULE.defLo : RULE.defHi),
+    lim = (cnt) => (nu ? RULE27.def : cnt <= RULE.split ? RULE.defLo : RULE.defHi),
+    limLK = nu ? RULE27.defLK : RULE.defLK,
+    // zulässige Zahl eingebrachter Kurse: bis 2029 35 bis 40, ab 2030 genau 36
+    cntIn = (cnt) => (nu ? cnt == RULE27.n : cnt >= RULE.min && cnt <= RULE.max),
     better = (P, N, cnt, o) => !o || P * o.N > o.P * N || (P * o.N == o.P * N && cnt > o.cnt);
   const evalSet = (F) => {
     const forced = [...F].map((k) => I[k]),
@@ -210,9 +250,8 @@ function solve() {
       if (!N) return;
       const r = { P, N, cnt, d, ld, k, mask };
       if (better(P, N, cnt, any)) any = r;
-      if (cnt >= RULE.min && cnt <= RULE.max && better(P, N, cnt, anyIn)) anyIn = r;
-      if (cnt >= RULE.min && cnt <= RULE.max && d <= lim(cnt) && ld <= RULE.defLK && better(P, N, cnt, best))
-        best = r;
+      if (cntIn(cnt) && better(P, N, cnt, anyIn)) anyIn = r;
+      if (cntIn(cnt) && d <= lim(cnt) && ld <= limLK && better(P, N, cnt, best)) best = r;
     };
     for (let mask = 0; mask < 1 << Bs.length; mask++) {
       let P = 0,
@@ -276,8 +315,12 @@ function solve() {
         Bs.filter((c, j) => (r.mask >> j) & 1),
         win.e.ord.slice(0, r.k),
       ),
-    ntot = C.reduce((s, c) => s + (c.p > 0 ? mult(c) : 0), 0);
+    ntot = C.reduce((s, c) => s + (c.p > 0 ? mult(c) : 0), 0),
+    // belegte Kurse: bis 2029 zählen nur anrechenbare (mind. 38), ab 2030 genau 40 inklusive Vertiefungskurse
+    nbel = nu ? ntot + (+st.vk || 0) : ntot,
+    belegtOk = nu ? nbel >= RULE27.belegt : ntot >= RULE.belegt;
   return {
+    nu,
     set,
     keys: new Set(set.map((c) => c.k)),
     P: r.P,
@@ -289,12 +332,15 @@ function solve() {
     asg: win.a, // zugeordnete Pflichtfächer
     viol: win.viol, // nicht erfüllte Pflichtbedingungen
     feas: win.feas, // Kurszahl und Defizite zulässig
-    cntOk: r.cnt >= RULE.min && r.cnt <= RULE.max,
-    defOk: r.d <= lim(r.cnt) && r.ld <= RULE.defLK,
+    cntOk: cntIn(r.cnt),
+    defOk: r.d <= lim(r.cnt) && r.ld <= limLK,
     defMax: lim(r.cnt),
-    belegtOk: ntot >= RULE.belegt,
-    ok: win.feas && !win.viol.length && ntot >= RULE.belegt,
+    belegtOk,
+    ok: win.feas && !win.viol.length && belegtOk,
     ntot, // anrechenbare Kurse (mindestens 1 Punkt; Projektkurs usw. mit ihrem Gewicht)
+    nbel, // belegte Kurse (ab 2030 mit Vertiefungskursen)
+    a5, // 5. Abiturfach (ab 2030)
+    ref5, // 5. Abiturfach ist das Referenzfach des Projektkurses
     items: C, // alle Kurse inkl. angesetzter
     C: C.filter((c) => !c.est), // nur Kurse mit eigener Note (für Schnitte)
     est: C.filter((c) => c.est).length,
@@ -302,56 +348,70 @@ function solve() {
     b1: Math.min(600, R((r.P / r.N) * 40)),
   };
 }
-// Block II (§ 29 Abs. 2 und 4): jedes Prüfungsergebnis fünffach. Bei schriftlicher und mündlicher Prüfung im
-// 1. bis 3. Fach zählt schriftlich doppelt; gerundet wird erst der fünffache Wert (Tabelle in Anlage 8 VVzAPO-GOSt,
-// z. B. schriftlich 5 und mündlich 6: 16 ÷ 3 × 5 = 26,7, also 27 Punkte).
-// e = Ergebnis in einfacher Wertung (ggf. mit Nachkommastellen), e5 = Punkte in Block II.
+// Block II bis zum Abitur 2029 (§ 29 Abs. 2 und 4 alt): vier Prüfungen, jedes Ergebnis fünffach.
+// Ab dem Abitur 2030 (§ 38 Abs. 3 APO-GOSt (2027)): fünf Prüfungen, jedes Ergebnis vierfach; das 5. Fach ist eine
+// Präsentationsprüfung (§ 35) oder eine Besondere Lernleistung mit Kolloquium (§ 36).
+// Bei schriftlicher und mündlicher Prüfung im 1. bis 3. Fach zählt schriftlich doppelt; gerundet wird erst der
+// gewichtete Wert (Tabelle in Anlage 8 VVzAPO-GOSt: bisher (2s + m) ÷ 3 × 5, ab 2030 (2s + m) ÷ 3 × 4, ab ,5 auf;
+// z. B. schriftlich 5 und mündlich 6: bisher 16 ÷ 3 × 5 = 26,7, also 27; ab 2030 16 ÷ 3 × 4 = 21,3, also 21).
+// e = Ergebnis in einfacher Wertung (ggf. mit Nachkommastellen), eb = Punkte in Block II.
+const exW = () => (isNeu(st) ? RULE27.w : 5), // Gewicht einer Prüfung in Block II
+  exN = () => (isNeu(st) ? RULE27.ex : 4); // Zahl der Prüfungen
 function exams() {
-  const out = [];
-  for (let n = 1; n <= 4; n++) {
+  const out = [],
+    w = exW();
+  for (let n = 1; n <= exN(); n++) {
     const x = st.x[n] || {},
       id = (S.find(([i]) => st.af[i] == n) || [])[0],
       s = num(x.s),
       m = num(x.m);
     let e = null,
-      e5 = null;
+      eb = null;
     if (s != null) {
       if (n < 4 && m != null) {
         e = (2 * s + m) / 3;
-        e5 = R(((2 * s + m) * 5) / 3);
+        eb = R(((2 * s + m) * w) / 3);
       } else {
         e = s;
-        e5 = 5 * s;
+        eb = w * s;
       }
     }
-    out.push({ n, id, e, e5, lk: !!id && (st.cells[id] || []).includes('LK') });
+    out.push({ n, id, e, eb, lk: !!id && (st.cells[id] || []).includes('LK') });
   }
   return out;
 }
 // Prognose für eine noch fehlende Prüfung: Schnitt der benoteten Kurse im Prüfungsfach, sonst Block-I-Schnitt.
-function guess(r, id) {
-  const a = id ? r.C.filter((c) => c.id == id && c.t != 'B') : [];
+// Ist das 5. Abiturfach das Referenzfach des Projektkurses, gehören die Projektkurs-Halbjahre dazu (die Präsentation
+// beruht auf den Produkten des Projektkurses).
+function guess(r, id, n) {
+  const pk = n == 5 && r.ref5,
+    a = id ? r.C.filter((c) => (c.id == id || (pk && c.id == 'pk')) && c.t != 'B') : [];
   return a.length ? R(a.reduce((s, c) => s + c.p, 0) / a.length) : R(r.avg);
 }
 function tot(r) {
   const ex = exams(),
-    v5 = ex.map((e) => e.e5 ?? 5 * guess(r, e.id)),
-    done = ex.every((e) => e.e5 != null),
-    b2 = Math.min(300, v5.reduce((a, x) => a + x, 0)),
+    w = exW(),
+    v = ex.map((e) => e.eb ?? w * guess(r, e.id, e.n)),
+    done = ex.every((e) => e.eb != null),
+    b2 = Math.min(300, v.reduce((a, x) => a + x, 0)),
     G = r.b1 + b2;
-  const fin = done && courses().every((c) => pts(c).fin),
-    n5 =
-      v5.filter((x) => x >= 25).length >= 2 &&
-      ex.some((e, i) => e.lk && v5[i] >= 25);
+  // Mindestbedingung: bisher in 2 Prüfungsfächern je 25 (= 5 × 5), ab 2030 in 3 Prüfungsfächern je 20 (= 4 × 5),
+  // jeweils darunter ein Leistungskursfach
+  const lo = isNeu(st) ? RULE27.min : 25,
+    nn = isNeu(st) ? RULE27.need : 2,
+    fin = done && courses().every((c) => pts(c).fin),
+    nx = v.filter((x) => x >= lo).length >= nn && ex.some((e, i) => e.lk && v[i] >= lo);
   return {
     ex,
-    v5,
+    v,
     done,
     b2,
     G,
     fin,
-    n5,
-    pass: G >= 300 && r.b1 >= 200 && b2 >= 100 && n5 && r.ok,
+    nx,
+    lo,
+    nn,
+    pass: G >= 300 && r.b1 >= 200 && b2 >= 100 && nx && r.ok,
   };
 }
 const grade = (G) =>

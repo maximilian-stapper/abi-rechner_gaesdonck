@@ -57,6 +57,36 @@ const RULE = { min: 35, max: 40, split: 37, defLo: 7, defHi: 8, defLK: 3, belegt
   SPW = { pk: 2, ac: 2 },
   // Mögliche Schwerpunktfächer (neuntes Pflichtfach, § 11 Abs. 5): weitere Fremdsprache oder weiteres MINT-Fach.
   SF = [...FS, 'bi', 'ch', 'ph', 'if'];
+
+// ---------------------------------------------------------------------------
+// Welche Prüfungsordnung gilt? Das hängt am Abiturjahrgang (st.y).
+// Die neue APO-GOSt (2027) (BASS 13-32 Nr. 3.1 (2027), in Kraft ab 01.08.2027) gilt nach § 45 erstmals für alle,
+// die im Schuljahr 2027/28 die Einführungsphase besuchen, regulär also ab dem Abitur 2030. Wer schon 2027/28 (oder
+// früher) in der Q1 war und danach ein Jahr wiederholt, beendet die Oberstufe nach der bisherigen Fassung, auch mit
+// Abitur 2030 oder 2031 (st.q1alt). Alte Stände ohne Jahrgang rechnen wie bisher.
+// ---------------------------------------------------------------------------
+const NEU_AB = 2030,
+  isNeu = (s) => !!s && +s.y >= NEU_AB && !s.q1alt,
+  // Abiturjahrgänge zur Auswahl: vom laufenden Schuljahr an (ab August zählt das nächste Jahr) sieben Jahre
+  JAHRE = (() => {
+    const d = new Date(),
+      a = d.getFullYear() + (d.getMonth() >= 7 ? 1 : 0);
+    return Array.from({ length: 7 }, (_, i) => a + i);
+  })();
+// Regeln der APO-GOSt (2027) (Abitur ab 2030):
+// § 11 Abs. 2, § 26 Abs. 1: genau 40 Kurse belegen (Vertiefungskurse zählen mit, Kurse mit 0 Punkten und Vertiefungskurse
+//   „nicht teilgenommen“ gelten als nicht belegt), davon genau 36 in Block I einbringen: die 8 LK und 28 weitere.
+// § 27 Abs. 2: LK zweifach, die 28 weiteren einfach; unter den 36 höchstens 7 Defizite (4 oder weniger Punkte), davon
+//   höchstens 3 Leistungskurse; Block I mindestens 200. § 27 Abs. 3: Block I = P ÷ S × 40, gerundet (S = 44).
+// § 26 Abs. 7: höchstens 2 Literaturkurse. § 38 Abs. 3: Block II = fünf Prüfungen vierfach (max. 300), mindestens 100,
+//   in mindestens drei Prüfungsfächern, darunter einem Leistungskursfach, jeweils mindestens 20 Punkte.
+const RULE27 = { n: 36, lk: 8, belegt: 40, def: 7, defLK: 3, li: 2, ex: 5, w: 4, need: 3, min: 20 },
+  // Projektkurs (Pflicht ab Abitur 2030, § 11 Abs. 9): zwei Halbjahre in der Q2, Code PK in st.cells.pk.
+  // An der Gaesdonck kann an seine Stelle eine Advanced Class treten (st.pj.type = 'ac'); gerechnet wird gleich.
+  PKC = ['', '', 'PK', 'PK'],
+  pjArt = (s) => SP[(s && s.pj && s.pj.type) == 'ac' ? 'ac' : 'pk'],
+  // Fachname inklusive Projektkurs (NM selbst bleibt unverändert, Untis nutzt es für die Fächererkennung)
+  FN = (id) => (id == 'pk' ? pjArt(typeof st == 'undefined' ? null : st) : NM[id]);
 const $ = (s) => document.querySelector(s),
   R = (x) => Math.floor(x + 0.5 + 1e-9),
   num = (v) => (v === '' || v == null ? null : +v),
