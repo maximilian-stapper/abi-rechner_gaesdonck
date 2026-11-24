@@ -1,0 +1,195 @@
+/* Dezente Bewegung (Gegenstück: motion.js). Kurz (0,1 bis 0,26 s), leise, nie im Weg:
+   Kästen zoomen auf statt aufzuploppen, aktive Tabs tragen eine wandernde Umrandung,
+   Knöpfe geben beim Antippen minimal nach. Wer „Bewegung reduzieren“ eingestellt hat, bekommt
+   nur die Umrandung ohne Wanderung: Alles Bewegte steht im Block prefers-reduced-motion: no-preference. */
+:root {
+  --m-ease: cubic-bezier(0.22, 1, 0.36, 1); /* wie beim Lade-Logo: zügig los, weich aus */
+}
+
+/* Tabs: eine dünne Umrandung (<i class=glide>, legt motion.js an) liegt hinter dem aktiven Knopf und wandert
+   beim Wechsel zum neuen. Ohne motion.js bleibt die bisherige Darstellung (.on mit Hintergrund). */
+.tabs,
+.seg,
+.un-tg {
+  position: relative;
+}
+.tabs > button,
+.seg > button,
+.un-tg > button {
+  position: relative;
+  z-index: 1;
+}
+.glide {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  top: 0;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.17);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); /* wie .kp-kw.on */
+  pointer-events: none;
+}
+.seg.has-glide > button.on,
+.un-tg.has-glide > button.on {
+  background: none; /* die Fläche trägt jetzt die Umrandung */
+}
+/* Die Tabs haben je eine eigene Fläche (.05), die über der Umrandung liegt: zusammen ergibt es das alte .16 */
+.tabs.has-glide > button.on {
+  background: rgba(255, 255, 255, 0.05);
+}
+.tabs > .glide {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Kästen: beim Wechsel der Ansicht zoomen sie von etwas kleiner auf Normalgröße, einer nach dem anderen.
+     motion.js setzt .enter an #app und --i (0 bis 5) an jedes Kind; Kopfzeile und Tabs bleiben stehen. */
+  #app.enter > :not(.top):not(.tabs) {
+    animation: m-zoom 0.24s var(--m-ease) calc(var(--i, 0) * 35ms) backwards;
+  }
+  @keyframes m-zoom {
+    from {
+      opacity: 0;
+      transform: scale(0.965);
+    }
+  }
+  /* Aufklappbare Bereiche: der Inhalt zoomt ebenso leise auf */
+  details[open] > :not(summary) {
+    animation: m-zoom 0.22s var(--m-ease) backwards;
+  }
+
+  /* Dialoge: zoomen beim Öffnen auf, der Hintergrund blendet weich ein. Rein per CSS (@starting-style);
+     Browser ohne das zeigen sie wie bisher sofort. */
+  dialog {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  dialog[open] {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 0.2s ease-out,
+      transform 0.26s var(--m-ease);
+  }
+  @starting-style {
+    dialog[open] {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+  dialog::backdrop {
+    opacity: 0;
+  }
+  dialog[open]::backdrop {
+    opacity: 1;
+    transition: opacity 0.2s ease-out;
+  }
+  @starting-style {
+    dialog[open]::backdrop {
+      opacity: 0;
+    }
+  }
+  /* Beim Schließen kurz wieder zurück. Das geht nur, wo der Dialog bis zum Ende der Blende in der obersten
+     Ebene bleibt (overlay); sonst sprang er für einen Moment an eine falsche Stelle, dann lieber sofort zu. */
+  @supports (overlay: auto) {
+    dialog {
+      transition:
+        opacity 0.14s ease-in,
+        transform 0.14s ease-in,
+        overlay 0.14s allow-discrete,
+        display 0.14s allow-discrete;
+    }
+    dialog::backdrop {
+      transition:
+        opacity 0.14s ease-in,
+        overlay 0.14s allow-discrete,
+        display 0.14s allow-discrete;
+    }
+  }
+
+  /* Antippen: Knöpfe, Zeilen und Stundenblöcke geben minimal nach, Farben laufen weich */
+  .bt,
+  .ib,
+  .un-chip,
+  .un-nx,
+  .un-kt,
+  .kp-x,
+  .un-ls,
+  .uchk,
+  .cell,
+  .row {
+    transition:
+      transform 0.14s var(--m-ease),
+      background-color 0.18s ease,
+      color 0.18s ease,
+      filter 0.18s ease;
+  }
+  /* Tabs: nur der Druck. Fläche und Farbe führt motion.js (Umrandung, Beschriftung); ein CSS-Übergang
+     dazwischen würde dort die gemessenen Farben verfälschen. */
+  .tabs button,
+  .seg button,
+  .un-tg button {
+    transition: transform 0.14s var(--m-ease);
+  }
+  .bt:not(:disabled):active,
+  .ib:not(:disabled):active,
+  .tabs button:active,
+  .seg button:active,
+  .un-tg button:not(:disabled):active,
+  .un-chip:active,
+  .un-nx:active,
+  .un-kt:active,
+  .kp-x:active,
+  .un-ls:active {
+    transform: scale(0.96);
+  }
+  .row:active {
+    transform: scale(0.985);
+  }
+  .cell:active {
+    transform: scale(0.92);
+  }
+  .uchk:active {
+    transform: scale(0.88);
+  }
+
+  /* Zustandswechsel in der Noteneingabe: Auswahl und aktives Feld blenden weich um */
+  .pc {
+    transition:
+      transform 0.08s,
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .sc {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      outline-color 0.15s ease;
+  }
+  .sc.on {
+    outline-color: var(--b);
+  }
+}
+
+/* Maus: ein Hauch Rückmeldung beim Darüberfahren (auf Touch-Geräten gibt es kein Hover) */
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .bt:not(:disabled):hover,
+  .ib:not(:disabled):hover,
+  .un-chip:hover,
+  .un-nx:hover,
+  .kp-x:hover {
+    filter: brightness(1.15);
+  }
+  .row:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  .tabs button:not(.on):hover,
+  .seg button:not(.on):hover,
+  .un-tg button:not(.on):not(:disabled):hover {
+    color: var(--t);
+  }
+}

@@ -49,6 +49,7 @@ function wiz() {
      '',
    )}</select><h4>Name (optional)</h4><input id=spn value="${esc((Object.values(W.sp)[0] || {}).name || '')}" placeholder="z. B. Sport-Ernährung-Gesundheit"></div>
  <div id=msg class=d style="padding:0 6px;color:var(--w)"></div><div class=bar style="padding:0 4px"><button class=bt data-a=prev>Zurück</button><button class="bt pr" data-a=fin>Speichern und starten</button></div>`;
+  Motion.show('w:' + step);
 }
 function finish() {
   const af = {},

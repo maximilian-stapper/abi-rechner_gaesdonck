@@ -310,7 +310,7 @@ const UntisUI = (() => {
       note = '';
     if (has) {
       const r = grid(w, open);
-      g = weekLessons ? r.html : `<p class=d style="padding:14px 4px">In dieser Woche sind keine Stunden gespeichert${s.range && s.range[0] ? ` (letzter Abgleich: ${fmt(s.range[0])} bis ${fmt(s.range[1])})` : ''}.</p>`;
+      g = weekLessons ? `<div data-swap=un-week data-key=${w.from}>${r.html}</div>` : `<p data-swap=un-week data-key=${w.from} class=d style="padding:14px 4px">In dieser Woche sind keine Stunden gespeichert${s.range && s.range[0] ? ` (letzter Abgleich: ${fmt(s.range[0])} bis ${fmt(s.range[1])})` : ''}.</p>`;
       if (r.hidden) note += `<small class="d un-nt">${r.hidden} Termin${r.hidden == 1 ? '' : 'e'} außerhalb von ${FROM} bis ${TO} ${r.hidden == 1 ? 'wird' : 'werden'} nicht angezeigt.</small>`;
     }
     const um = U.unmapped();
@@ -557,6 +557,7 @@ const UntisUI = (() => {
     $('#udn').textContent = l ? fmt(l.date) + ', ' + l.start + ' Uhr' : 'Keine Stunde in diesem Fach im Stundenplan gefunden.';
     $('#udn').hidden = m !== 'next' && !!l;
     $('#ud').hidden = m !== 'date';
+    Motion.glide(box); // Umrandung zum gewählten Knopf wandern lassen
   }
 
   function addForm(k) {
@@ -1050,5 +1051,6 @@ const UntisUI = (() => {
     if (active() && view == 'plan') render();
   });
 
-  return { head, view: view_, wipe, defaults, FROM, TO };
+  // key: welche Ansicht gerade gezeigt wird (für motion.js: neue Ansicht = Kästen zoomen auf)
+  return { head, view: view_, key: () => (tab === 'kp' ? 'kp' : 'un:' + view), wipe, defaults, FROM, TO };
 })();
