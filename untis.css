@@ -677,7 +677,7 @@ button.kp-kw:hover {
   min-height: 40px;
   padding: 15px 3px 3px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.09);
   min-width: 0;
 }
 .kp-d > i {
@@ -687,11 +687,11 @@ button.kp-kw:hover {
   font-style: normal;
   font-size: 10px;
   line-height: 12px;
-  color: var(--d);
+  color: #c9c9d0;
   font-variant-numeric: tabular-nums;
 }
 .kp-wk.cur .kp-d {
-  background: rgba(77, 163, 255, 0.06);
+  background: rgba(77, 163, 255, 0.14);
 }
 .kp-d.today {
   box-shadow: inset 0 0 0 1px rgba(77, 163, 255, 0.55);
@@ -700,15 +700,15 @@ button.kp-kw:hover {
   color: var(--b);
   font-weight: 700;
 }
-/* Ferien und freie Tage: schraffiert */
+/* Ferien und freie Tage: hellgrau schraffiert, deutlich heller als Schultage */
 .kp-d.off,
 .kp-off {
-  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.055) 0 5px, transparent 5px 10px);
+  background: rgba(255, 255, 255, 0.17) repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.13) 0 5px, transparent 5px 10px);
 }
 .kp-ol {
   font-size: 10px;
   line-height: 1.2;
-  color: var(--d);
+  color: #dcdce2;
   hyphens: auto;
   overflow-wrap: anywhere;
 }
@@ -727,7 +727,7 @@ button.kp-kw:hover {
   gap: 8px;
   padding: 6px 8px;
   border-radius: 8px;
-  color: var(--d);
+  color: #c9c9d0;
   font-size: 13px;
 }
 .kp-off b {
@@ -781,7 +781,7 @@ button.kp-kw:hover {
 .kp-ev {
   font-size: 10px;
   line-height: 1.2;
-  color: var(--d);
+  color: #c9c9d0;
   hyphens: auto;
   overflow-wrap: anywhere;
 }
