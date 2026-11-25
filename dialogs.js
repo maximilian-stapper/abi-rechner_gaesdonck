@@ -115,7 +115,7 @@ function saveEdit(k) {
 function menu() {
   $('#dlg').className = '';
   $('#dlg').innerHTML =
-    `<h3>Menü</h3><button class=bt data-a=wz>Fächer und Abiturfächer ändern</button><button class=bt data-a=ex>Sicherungsdatei speichern</button><button class=bt data-a=im>Sicherungsdatei laden</button><button class=bt data-a=rs style="color:var(--no)">Alle Daten löschen</button><small>Deine Noten liegen nur in diesem Browser auf diesem Gerät. Speichere regelmäßig eine Sicherungsdatei, denn Safari kann Daten nach längerer Nichtnutzung löschen. Hilfreich: Seite zum Home-Bildschirm hinzufügen. <button type=button class=lk data-a=dsg>Datenschutz</button></small><div class=bar><button class=bt data-a=cx>Schließen</button></div>`;
+    `<h3>Menü</h3><button class=bt data-a=wz>Fächer und Abiturfächer ändern</button><button class=bt data-a=ex>Sicherungsdatei speichern</button><button class=bt data-a=im>Sicherungsdatei laden</button><button class=bt data-a=rs style="color:var(--no)">Alle Daten löschen</button><small>Deine Noten liegen nur in diesem Browser auf diesem Gerät. Speichere regelmäßig eine Sicherungsdatei, denn Safari kann Daten nach längerer Nichtnutzung löschen. Hilfreich: Seite zum Home-Bildschirm hinzufügen. <button type=button class=lk data-a=dsg>Datenschutz</button></small><div class=bar>${Counter.line()}<button class=bt data-a=cx>Schließen</button></div>`;
   $('#dlg').showModal();
 }
 // Datenschutzhinweise (Menü, Untis-Einrichtung, Erinnerungen: data-a=dsg). Bei Änderungen an Workern,
@@ -126,7 +126,7 @@ function privacy() {
   d.className = 'un ds';
   d.innerHTML =
     `<h3>Datenschutz</h3><div class=dbody>` +
-    `<p><b>Kurz:</b> Noten und LuPO-Datei verlassen nie dein Gerät. Nur für Untis und die Erinnerungen laufen einzelne Daten über zwei kleine Server dieser App (Cloudflare Worker), und das nur, wenn du sie benutzt.</p>` +
+    `<p><b>Kurz:</b> Noten und LuPO-Datei verlassen nie dein Gerät. Nur für Untis und die Erinnerungen laufen einzelne Daten über kleine Server dieser App (Cloudflare Worker), und das nur, wenn du sie benutzt. Außerdem zählt ein dritter Worker anonym, wie oft die Seite geöffnet wird.</p>` +
     h('Wer steckt dahinter?', 'Ein privates, nicht kommerzielles Schülerprojekt, kein Angebot der Schule und nicht von Untis. Ansprechpartner: <a href="https://github.com/maximilian-stapper/abi-rechner_gaesdonck" target=_blank rel=noopener>maximilian-stapper auf GitHub</a>.') +
     h(
       'Auf deinem Gerät',
@@ -143,6 +143,11 @@ function privacy() {
       'Erinnerungen (nur wenn eingeschaltet)',
       'Beim Erinnerungs-Worker liegen nur die Push-Adresse deines Geräts, deine Einstellungen und, in welchem Fach wann offene Hausaufgaben fällig sind. Die Aufgaben selbst, Namen und Zugangsdaten bekommt er nicht. Die Mitteilung läuft über den Push-Dienst deines Geräts (Apple, Google oder Mozilla).',
       'Grundlage ist deine Einwilligung durch das Einschalten. <i>Ausschalten</i> widerruft sie und löscht alles sofort, sonst verfällt der Eintrag nach 60 Tagen ohne Kontakt. Wenn du unter 16 bist, frag vorher deine Eltern.',
+    ) +
+    h(
+      'Aufrufzähler',
+      'Beim Öffnen der Seite meldet die App einem dritten Worker <i>einen Aufruf</i>. Er zählt nur, wie oft die Seite insgesamt geöffnet wurde, und zeigt die Zahl klein im Menü. Gespeichert wird allein diese eine Zahl: keine IP-Adresse, kein Gerät, kein Datum, kein Cookie und keine Kennung in deinem Browser. Neu laden zählt nicht mit. Wer die Seite öffnet, lässt sich daraus nicht ablesen.',
+      'Grundlage ist das berechtigte Interesse, die Reichweite dieses Schülerprojekts einschätzen zu können (Art. 6 Abs. 1 lit. f DSGVO). Weil nichts über dich gespeichert wird, gibt es auch nichts zu löschen.',
     ) +
     h('Anbieter', 'Die Seite liegt bei GitHub (GitHub Pages), die Worker bei Cloudflare. Beide sind US-Unternehmen und nach dem EU-US Data Privacy Framework zertifiziert. Sie sehen bei jedem Aufruf technisch deine IP-Adresse und können Zugriffe kurz protokollieren (Zeit, Adresse, keine Inhalte).') +
     h('Deine Rechte', 'Du kannst Auskunft, Berichtigung und Löschung verlangen und Einwilligungen widerrufen. Fast alles geht direkt in der App: <i>Menü → Alle Daten löschen</i> und <i>Erinnerungen → Ausschalten</i>. Beschweren kannst du dich bei der Landesbeauftragten für Datenschutz NRW.') +
