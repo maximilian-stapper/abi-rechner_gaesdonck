@@ -1,0 +1,27 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # count-worker.test.mjs braucht node:sqlite (ab 22.5)
+      - name: Alle Tests ausführen
+        run: |
+          status=0
+          for f in tests/*.test.js tests/*.test.mjs; do
+            echo "::group::$f"
+            if node "$f"; then echo "::endgroup::"; else echo "::endgroup::"; echo "::error file=$f::$f fehlgeschlagen"; status=1; fi
+          done
+          exit $status
