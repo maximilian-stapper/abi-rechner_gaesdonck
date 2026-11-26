@@ -369,7 +369,7 @@ const UntisUI = (() => {
     const busy = uiBusy || s.busy;
 
     const planCard = has
-      ? `<div class=g id=un-plan><div class=un-nav><button type=button class=ib data-u=prev aria-label="Vorige Woche">‹</button><div class=wk><b>KW ${kw(w.from)}</b><small>${wlabel}</small></div><button type=button class=ib data-u=next aria-label="Nächste Woche">›</button><button type=button class=bt data-u=today${w.from === homeWeek() ? ' disabled' : ''}>Heute</button><button type=button class="ib un-rf" data-u=sync ${busy ? 'data-busy=1 disabled ' : ''}aria-label="Stundenplan aktualisieren" title="Aktualisieren"><svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round aria-hidden=true><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>${g}<div class=un-foot>${note}<small class=d>${s.lastSync ? 'Stand: ' + stamp(s.lastSync) + ' · ' : ''}${s.lessons} Stunden</small><span class=sp></span><button type=button class=lk data-u=setup>Einrichten</button></div></div>`
+      ? `<div class=g id=un-plan><div class=un-nav><button type=button class=ib data-u=prev aria-label="Vorige Woche">‹</button><div class=wk><b>KW ${kw(w.from)}</b><small>${wlabel}</small></div><button type=button class=ib data-u=next aria-label="Nächste Woche">›</button><button type=button class=bt data-u=today${w.from === homeWeek() ? ' disabled' : ''}>Heute</button><button type=button class="ib un-rf" data-u=sync ${busy ? 'data-busy=1 disabled ' : ''}aria-label="Stundenplan aktualisieren" title="Aktualisieren"><svg viewBox="0 0 24 24" width=18 height=18 fill=none stroke=currentColor stroke-width=2.2 stroke-linecap=round stroke-linejoin=round aria-hidden=true><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button></div>${g}<div class=un-foot>${note}${s.lastSync ? `<small class=d>Stand: ${stamp(s.lastSync)}</small>` : ''}<span class=sp></span><button type=button class=lk data-u=setup>Einrichten</button></div></div>`
       : '';
 
     // Hausaufgaben (Überfälliges fehlt absichtlich)
@@ -380,7 +380,7 @@ const UntisUI = (() => {
         .join('');
     const hwCard = `<div class=g><div class=un-hh><h2>Hausaufgaben</h2><div class=un-tg role=group aria-label="Anzeige"><button type=button data-u=hwall data-v=0 aria-pressed="${!hwAll}" class="${!hwAll ? 'on' : ''}">Offen</button><button type=button data-u=hwall data-v=1 aria-pressed="${hwAll}" class="${hwAll ? 'on' : ''}">Alle</button></div></div>${chips ? `<div class=un-chips>${chips}</div>` : ''}${list.length ? list.map((h) => hwItem(h, true, reg)).join('') : `<p class=d style="margin:10px 0">${hwAll ? 'Noch keine Hausaufgaben.' : 'Keine offenen Hausaufgaben.'}</p>`}<div class=bar style="justify-content:flex-start"><button type=button class=bt data-u=hwnew data-k="">+ Hausaufgabe</button></div></div>`;
 
-    return banner + first + nxt + planCard + hwCard + (has ? UP.card() : '') + `<small class=d>Stundenplan und Hausaufgaben liegen nur in diesem Browser. Fremde Angaben (Räume, Lehrkräfte, Aufgaben) stammen aus Untis und sind ohne Gewähr.</small>`;
+    return banner + first + nxt + planCard + hwCard + (has ? UP.card() : '');
   }
 
   // ---------- Klausurplan (klausurplan.js + klausuren.js) ----------
@@ -488,25 +488,25 @@ const UntisUI = (() => {
       rows.push(`<div class="kp-wk${isCur ? ' cur' : ''}"><button type=button class="kp-kw${w.mon === wk ? ' on' : ''}" data-u=kpwk data-w=${w.mon} aria-label="KW ${kw(w.mon)} im Stundenplan zeigen"><b>${kw(w.mon)}</b></button>${cells}</div>`);
     }
 
-    // Wie im Untis-Tab: „Als Nächstes“ als eigener Block über der Karte, in der Karte direkt der Kalender, Hinweise darunter
+    // Wie im Untis-Tab: „Als Nächstes“ als eigener Block über der Karte, in der Karte direkt der Kalender.
+    // Darunter nur Hinweise, die gerade etwas erklären (keine Klausuren, „?“); Plan-Stand steht im Detail-Dialog.
     const top = `<div class=un-hh><h2>Klausuren</h2>${toggle}</div>`,
       next = nx
         ? `<button type=button class=un-nx data-u=kpx data-i=${kpList.indexOf(nx)} style="--h:${hue(kpKey(nx))}"><span class=dot></span><b>Als Nächstes</b><span class=nm>${esc(US.name(kpKey(nx)))}</span><small>${fmt(nx.date)} · ${kpIn(nx.date, td)}</small></button>`
         : '',
-      info = `<small class="d kp-nt">${p.stufe === 'EF' ? 'Klausuren deiner Fächer aus dem Stundenplan' : `Nur deine schriftlichen Fächer in ${sem}`}, dazu Ferien und freie Tage. Stand ${esc(KP.stand.split(',')[0])}.</small>`,
       count = nx
-        ? `<small class="d kp-nt">${upcoming.length === 1 ? 'Das ist die letzte Klausur' : `Noch ${upcoming.length} Klausuren`} in diesem Halbjahr.</small>`
+        ? ''
         : `<small class="d kp-nt">${noWritten ? `Im Abi-Rechner sind für ${sem} keine schriftlichen Fächer eingetragen. Trag deine Kurse dort ein (S oder LK), dann erscheinen hier deine Klausuren.` : kpList.length ? 'In diesem Halbjahr stehen keine Klausuren mehr an.' : 'Für deine Fächer stehen in diesem Plan keine Klausuren.'}</small>`,
       pastBtn = past.length ? `<button type=button class="lk kp-past" data-u=kppast aria-expanded="${kpPast}">${kpPast ? 'Vergangene Wochen ausblenden' : past.length + ' vergangene Woche' + (past.length === 1 ? '' : 'n') + ' zeigen'}</button>` : '',
       unsure = kpList.some((e) => e.unsure && e.date >= td)
-        ? `<small class="d kp-nt">Mit <b>?</b>: LK-Klausur, falls dein Kurs (L1 oder L2) im angegebenen Band liegt. Nach dem Untis-Abgleich klärt sich das von selbst.</small>`
+        ? `<small class="d kp-nt"><b>?</b> = LK-Klausur nur, falls dein Kurs in diesem Band liegt.</small>`
         : '',
       grid = `<div class=kp><div class="kp-wk kp-hd"><span>KW</span>${WD.slice(0, 5).map((d) => `<span>${d}</span>`).join('')}</div>${rows.join('')}</div>`;
     // Ganz unten: eigene Klausuren in den eigenen Kalender (Apple, Google, Outlook) übernehmen
     const exp = upcoming.filter((e) => !e.unsure),
       skip = upcoming.length - exp.length,
-      cal = `<div class=kp-cal><button type=button class="bt pr" data-u=kpics${exp.length ? '' : ' disabled'}>In meinen Kalender eintragen</button><small class=d>${exp.length ? `Lädt eine Kalenderdatei mit ${exp.length === 1 ? 'deiner nächsten Klausur' : `deinen ${exp.length} anstehenden Klausuren`}: ganztägige Termine mit Erinnerung am Vortag. Datei öffnen und alle hinzufügen, z. B. im Apple-Kalender.${skip ? ` ${skip} LK-Klausur${skip === 1 ? '' : 'en'} mit ? ${skip === 1 ? 'ist' : 'sind'} nicht dabei.` : ''}` : 'Keine anstehenden Klausuren zum Eintragen.'}</small></div>`;
-    return `${next}<div class=g id=kp>${top}${pastBtn}${grid}${count}${info}${unsure}<small class="d kp-nt">Tippe auf eine Klausur für Details und auf die KW, um die Woche im Untis-Stundenplan zu öffnen. Der Vertretungsplan in WebUntis hat Vorrang.</small>${cal}</div>`;
+      cal = `<div class=kp-cal><button type=button class="bt pr" data-u=kpics${exp.length ? '' : ' disabled'}>In meinen Kalender eintragen</button>${exp.length && skip ? `<small class=d>${skip} LK-Klausur${skip === 1 ? '' : 'en'} mit ? ${skip === 1 ? 'ist' : 'sind'} nicht dabei.</small>` : ''}</div>`;
+    return `${next}<div class=g id=kp>${top}${pastBtn}${grid}${count}${unsure}${cal}</div>`;
   }
 
   function kpSheet(e) {
