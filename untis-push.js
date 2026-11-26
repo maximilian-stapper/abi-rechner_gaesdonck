@@ -292,11 +292,12 @@ const UntisPush = (() => {
         bar = on
           ? `<button type=button class=bt data-u=nttest${dis}>Test-Mitteilung</button><button type=button class=bt data-u=ntoff${dis}>Ausschalten</button>`
           : `<button type=button class="bt pr" data-u=nton${dis}>Erinnerungen einschalten</button>`,
+        // Eingeschaltet erklären die Einstellungen sich selbst; ausgeschaltet kurz sagen, was passiert und was der Server erfährt
         note = on
-          ? `${c.at ? `Zuletzt an den Worker geschickt: ${new Date(c.at).toLocaleString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}${c.n != null ? `, ${c.n} offene Hausaufgabe${c.n === 1 ? '' : 'n'}` : ''}. ` : ''}Neue Hausaufgaben aus Untis kommen dazu, sobald die App abgleicht (beim Öffnen). Dafür kennt der Erinnerungs-Worker nur Fach und Fälligkeit, nicht die Aufgabe selbst; Ausschalten löscht das dort. <button type=button class=lk data-a=dsg>Datenschutz</button>`
-          : 'Dafür bekommt der Erinnerungs-Worker nur, in welchem Fach wann etwas fällig ist, nicht die Aufgabe selbst (keine Namen, keine Zugangsdaten). <button type=button class=lk data-a=dsg>Datenschutz</button>';
+          ? '<button type=button class=lk data-a=dsg>Datenschutz</button>'
+          : 'Der Erinnerungs-Server erfährt nur Fach und Fälligkeit, nicht die Aufgabe. <button type=button class=lk data-a=dsg>Datenschutz</button>';
       body =
-        `<p class=d>${on ? 'Jeden Tag um ' + c.hour + ' Uhr kommt' : 'Bekomm jeden Tag um ' + c.hour + ' Uhr'} eine Mitteilung, in welchen Fächern ${span} Hausaufgaben fällig sind. Abgehakte fallen raus.</p>` +
+        (on ? '' : `<p class=d>Jeden Tag um ${c.hour} Uhr eine Mitteilung, in welchen Fächern ${span} Hausaufgaben fällig sind.</p>`) +
         (w === 'denied' ? `<p class="d bad">Mitteilungen sind für diese App blockiert. Erlaube sie in den Einstellungen des Geräts (iPhone: Einstellungen → Mitteilungen → Abi-Rechner).</p>` : '') +
         `<div class=un-pf>${rows}</div><div class=bar style="justify-content:flex-start;flex-wrap:wrap">${bar}</div>` +
         (on && lastErr ? `<small class="d bad un-pn">Letzte Übertragung hat nicht geklappt: ${esc(lastErr)}</small>` : '') +

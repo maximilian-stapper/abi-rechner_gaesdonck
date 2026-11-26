@@ -27,7 +27,7 @@ const yrCard = () =>
 // Ab dem Abitur 2030 ist die Rechnung neu (APO-GOSt (2027) gilt erst ab 01.08.2027): deutlich als Beta kennzeichnen.
 const BETA = '<span class=beta>Beta</span>',
   betaCard = () =>
-    `<div class="g betabox"><h2>${BETA} Rechnung ab dem Abitur ${NEU_AB}</h2><p class=d>Die neue APO-GOSt (2027) gilt erst ab dem Schuljahr 2027/28. Der Rechner setzt sie nach dem veröffentlichten Text um und ist geprüft, aber es gibt noch keine Erfahrungen aus echten Abiturjahrgängen und noch keine LuPO-Dateien dafür. Ergebnisse bitte mit der Oberstufenkoordination abgleichen.</p></div>`;
+    `<div class="g betabox"><h2>${BETA} Rechnung ab dem Abitur ${NEU_AB}</h2><p class=d>Noch ohne Erfahrung aus echten Jahrgängen. Ergebnisse bitte mit der Oberstufenkoordination abgleichen.</p></div>`;
 // Welche Prüfungsordnung gerade gilt (für Übersicht und Rechenweise)
 const apoTx = () =>
   isNeu(st)
@@ -62,7 +62,6 @@ function ov() {
     // Pflicht, frei wählbar, gewählt
     free = r.items.filter((c) => c.p > 0 && c.t != 'B' && !r.must.has(c.k)),
     chosen = free.filter((c) => r.keys.has(c.k)).length,
-    bz = r.set.filter((c) => c.t == 'B'),
     out = r.items.filter((c) => c.p > 0 && !r.keys.has(c.k)),
     zero = r.items.filter((c) => c.p <= 0),
     a = r.asg,
@@ -94,8 +93,7 @@ function ov() {
       ? `Drei Prüfungsfächer mit mind. 5 Punkten (je ${RULE27.min} in Block II), darunter ein Leistungskurs`
       : 'Zwei Prüfungsfächer mit mind. 5 Punkten, davon ein Leistungskurs';
   return `${yrCard()}<div class="g hero"><div class=d>${T.fin ? 'Endergebnis' : 'Hochrechnung'}</div><div class="big mono">${grade(T.G)}</div>${trend()}<div class=d>${T.G} von 900 Punkten · Block I ${r.b1} · Block II ${T.b2}${pf}</div>
- <div class=prog><i style="width:${Math.round((nf / cs.length) * 100)}%"></i></div><small>${nf} von ${cs.length} Kursen mit Endnote</small>
- <br><small>Eingebracht: ${r.cnt} Kurse (${cntTx}), davon ${r.must.size} Pflicht und ${chosen} von ${free.length} wählbaren${bz.length ? ' + ' + bz.map((c) => esc(SP[c.sp])).join(', ') : ''}</small>${r.est ? `<br><small>${r.est} Kurse ohne Note sind mit dem Schnitt ihres Fachs angesetzt.</small>` : ''}${st.y ? `<br><small>Abitur ${st.y} · ${nu ? 'neue APO-GOSt (ab ' + NEU_AB + ') ' + BETA : 'bisherige APO-GOSt'}</small>` : ''}</div>${nu ? betaCard() : ''}
+ <div class=prog><i style="width:${Math.round((nf / cs.length) * 100)}%"></i></div><small>${nf} von ${cs.length} Kursen mit Endnote</small></div>${nu ? betaCard() : ''}
  <div class="g ov-ck"><h2>Zulassungs-Check</h2><ul>${ck(r.viol.length ? `Pflichtbelegung nicht erfüllt:<br><small>${r.viol.map(esc).join('<br>')}</small>` : 'Pflichtbelegung erfüllt', r.viol.length ? 'no' : 'ok')}
  ${bel}${ck(`Eingebrachte Kurse: ${r.cnt} (${cntTx})`, r.cntOk ? 'ok' : 'no')}
  ${ck(`Defizite: ${r.d} (max. ${r.defMax}), davon Leistungskurs ${r.ld} (max. ${nu ? RULE27.defLK : RULE.defLK})`, r.defOk ? 'ok' : 'no')}${ck(`Block I mindestens 200: ${r.b1}`, r.b1 >= 200 ? 'ok' : 'no')}
@@ -103,7 +101,7 @@ function ov() {
  ${ck(`Gesamt mindestens 300: ${T.G}${pf}`, !T.fin ? '' : T.pass ? 'ok' : 'no')}</ul></div>
  <div class="g ov-sn"><h2>Halbjahresschnitte</h2>${hs.map(([l, a]) => `<div class=ir><span style="flex:1">${l}</span><b class=mono>${av(a)}</b></div>`).join('')}<h4>Fachschnitte</h4>${fs.map(([l, a]) => `<div class=ir><span style="flex:1">${esc(l)}</span><b class=mono>${av(a)}</b></div>`).join('')}</div>
  <div class=g><details><summary>Rechenweise</summary><p class=d style="margin-top:8px">${how}</p></details></div>
- <small class=d>Berechnete Kursnoten sind vorläufig. Verbindlich ist die Note, die die Lehrkraft festlegt. Alle Angaben ohne Gewähr.</small>`;
+ <small class=d>Alle Angaben ohne Gewähr.</small>`;
 }
 function qtab(i) {
   const r = solve(),

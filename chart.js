@@ -63,7 +63,7 @@ function trend() {
     });
   return `<div class="trend ${cls}">
     <div class="trend__head"><span>Verlauf</span><b>${label}</b></div>
-    ${plot(300, 84, 10, 10, 12, 'trendfill', '', false)}
+    ${plot(300, 140, 10, 10, 14, 'trendfill', '', false)}
     ${plot(900, 190, 2, 14, 16, 'trendfill2', ' class="trend__wide"', true)}
     <div class="trend__foot"><span>seit ${since}</span><span>jetzt</span></div>
   </div>`;
