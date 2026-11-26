@@ -677,7 +677,7 @@ button.kp-kw:hover {
   min-height: 40px;
   padding: 15px 3px 3px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.03); /* wie die Tagesspalten im Untis-Plan (.un-col) */
   min-width: 0;
 }
 .kp-d > i {
