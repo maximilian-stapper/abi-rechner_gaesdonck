@@ -175,10 +175,10 @@
   gap: 1px;
   padding: 3px 4px 3px 5px;
   border-radius: 8px;
-  border: 1px solid hsl(var(--h) 70% 62% / 0.55);
-  border-left: 3px solid hsl(var(--h) 75% 62%);
-  background: hsl(var(--h) 55% 45% / 0.3);
-  color: hsl(var(--h) 90% 90%);
+  border: 1px solid hsl(var(--h) 85% 62% / 0.85);
+  border-left: 3px solid hsl(var(--h) 95% 60%);
+  background: hsl(var(--h) 75% 45% / 0.5);
+  color: hsl(var(--h) 100% 93%);
   text-align: left;
   line-height: 1.1;
   overflow: hidden;
@@ -204,7 +204,7 @@
   height: 15px;
   padding: 0 3px;
   border-radius: 8px;
-  background: hsl(var(--h) 75% 64%);
+  background: hsl(var(--h) 95% 63%);
   color: #0e0e10;
   font: 700 10px/15px -apple-system, system-ui, sans-serif;
   text-align: center;
@@ -240,8 +240,8 @@
   margin: 10px 0;
   padding: 10px 14px;
   border-radius: 16px;
-  border: 1px solid hsl(var(--h) 70% 62% / 0.5);
-  background: hsl(var(--h) 55% 45% / 0.2);
+  border: 1px solid hsl(var(--h) 85% 62% / 0.8);
+  background: hsl(var(--h) 75% 45% / 0.34);
   text-align: left;
   cursor: pointer;
 }
@@ -257,7 +257,7 @@
   height: 10px;
   flex: none;
   border-radius: 50%;
-  background: hsl(var(--h) 75% 62%);
+  background: hsl(var(--h) 95% 60%);
 }
 
 /* Hausaufgaben */
@@ -301,9 +301,9 @@
   gap: 6px;
   padding: 6px 12px;
   border-radius: 99px;
-  border: 1px solid hsl(var(--h) 70% 62% / 0.6);
-  background: hsl(var(--h) 55% 45% / 0.25);
-  color: hsl(var(--h) 90% 90%);
+  border: 1px solid hsl(var(--h) 85% 62% / 0.9);
+  background: hsl(var(--h) 75% 45% / 0.42);
+  color: hsl(var(--h) 100% 93%);
   cursor: pointer;
 }
 .un-chip em {
@@ -312,7 +312,7 @@
   font-size: 12px;
   padding: 0 6px;
   border-radius: 99px;
-  background: hsl(var(--h) 75% 64%);
+  background: hsl(var(--h) 95% 63%);
   color: #0e0e10;
 }
 .un-hw {
@@ -322,8 +322,8 @@
   margin: 8px 0;
   padding: 10px 10px 10px 12px;
   border-radius: 14px;
-  background: hsl(var(--h) 45% 40% / 0.16);
-  border-left: 4px solid hsl(var(--h) 75% 62%);
+  background: hsl(var(--h) 65% 42% / 0.28);
+  border-left: 4px solid hsl(var(--h) 95% 60%);
 }
 .un-hw.dn {
   opacity: 0.55;
@@ -348,7 +348,7 @@ div.un-hb {
 .un-hb .sn {
   font-size: 13px;
   font-weight: 600;
-  color: hsl(var(--h) 85% 78%);
+  color: hsl(var(--h) 95% 76%);
 }
 .un-hb .t {
   overflow-wrap: anywhere;
@@ -379,13 +379,13 @@ div.un-hb {
   margin-top: 1px;
   padding: 0;
   border-radius: 50%;
-  border: 2px solid hsl(var(--h) 70% 64%);
+  border: 2px solid hsl(var(--h) 90% 63%);
   background: none;
   cursor: pointer;
   position: relative;
 }
 .uchk[aria-pressed='true'] {
-  background: hsl(var(--h) 75% 64%);
+  background: hsl(var(--h) 95% 63%);
 }
 .uchk[aria-pressed='true']::after {
   content: '';
@@ -559,7 +559,7 @@ dialog.un[open] {
 /* Leistungskurs: gleicher Farbton wie das Grundkursfach, aber kräftiger (dicker Rand, stärkere Fläche) */
 .un-ls.is-lk {
   border-left-width: 6px;
-  background: hsl(var(--h) 60% 45% / 0.5);
+  background: hsl(var(--h) 80% 45% / 0.7);
 }
 .un-ls.is-lk b {
   font-weight: 800;
@@ -743,10 +743,10 @@ button.kp-kw:hover {
   width: 100%;
   padding: 2px 3px 2px 4px;
   border-radius: 6px;
-  border: 1px solid hsl(var(--h) 70% 62% / 0.55);
-  border-left: 3px solid hsl(var(--h) 75% 62%);
-  background: hsl(var(--h) 55% 45% / 0.35);
-  color: hsl(var(--h) 90% 90%);
+  border: 1px solid hsl(var(--h) 85% 62% / 0.85);
+  border-left: 3px solid hsl(var(--h) 95% 60%);
+  background: hsl(var(--h) 75% 45% / 0.55);
+  color: hsl(var(--h) 100% 93%);
   text-align: left;
   line-height: 1.15;
   cursor: pointer;
@@ -768,7 +768,7 @@ button.kp-kw:hover {
 .kp-x.q {
   border-style: dashed;
   border-left-style: solid;
-  background: hsl(var(--h) 55% 45% / 0.18);
+  background: hsl(var(--h) 75% 45% / 0.3);
 }
 .kp-x.pa {
   opacity: 0.5;
