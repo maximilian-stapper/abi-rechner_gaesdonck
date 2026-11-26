@@ -539,3 +539,93 @@ dialog.ed[open] {
 .betabox {
   border-color: rgba(232, 176, 74, 0.45);
 }
+
+/* ---------- iPad und Mac ----------
+   Ab Tablet-Größe wird die Spalte breiter und die Kästen stehen nebeneinander. Die Mindesthöhe schließt Handys im
+   Querformat aus, dort bleibt alles wie im Hochformat. Auf dem Handy wirkt nichts aus diesem Block.
+   views.js und wizard.js setzen data-view an #app (ov, q, ab, un, kp, wiz). */
+@media (min-width: 720px) and (min-height: 600px) {
+  body {
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 980px;
+    padding: 16px 28px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    column-gap: 16px;
+    align-content: start;
+  }
+  main > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  main > .g {
+    margin: 8px 0;
+    padding: 18px;
+  }
+  main > .g.row {
+    padding: 14px 18px;
+  }
+  main > small.d {
+    margin-top: 8px;
+  }
+  main li {
+    text-wrap: pretty; /* keine einzelnen Wörter in der letzten Zeile */
+  }
+
+  /* Übersicht: Note oben über die ganze Breite, darunter Zulassungs-Check und Schnitte nebeneinander
+     (ab Laptop-Breite steht die Note links über dem Zulassungs-Check, siehe unten) */
+  main[data-view='ov'] {
+    grid-auto-flow: row dense;
+  }
+  main[data-view='ov'] > .ov-ck {
+    grid-column: 1 / 4;
+  }
+  main[data-view='ov'] > .ov-sn {
+    grid-column: 4 / -1;
+  }
+  /* Verlauf und Fortschritt in der breiten Note nicht endlos strecken */
+  main > .hero .trend,
+  main > .hero .prog {
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  main > .hero {
+    padding: 26px 22px 22px;
+    text-wrap: pretty;
+  }
+  .hero .big {
+    font-size: 64px;
+  }
+
+  /* Halbjahre: Kurse als Kacheln, zwei nebeneinander (drei ab Laptop-Breite) */
+  main[data-view='q'] > .row {
+    grid-column: span 3;
+  }
+  /* Abitur: Prüfungsfächer zu zweit nebeneinander */
+  main[data-view='ab'] > .g {
+    grid-column: span 3;
+  }
+  /* Einrichtung: Kurstabelle und Auswahl bleiben kompakt */
+  main[data-view='wiz'] {
+    max-width: 720px;
+  }
+}
+@media (min-width: 1000px) and (min-height: 600px) {
+  main[data-view='q'] > .row {
+    grid-column: span 2;
+  }
+  /* Übersicht: Note (ggf. Beta-Hinweis) und Zulassungs-Check links, Schnitte rechts daneben */
+  main[data-view='ov'] > .hero,
+  main[data-view='ov'] > .betabox {
+    grid-column: 1 / 4;
+  }
+  main[data-view='ov'] > .ov-sn {
+    grid-row: span 2;
+  }
+  main[data-view='ov']:has(> .betabox) > .ov-sn {
+    grid-row: span 3;
+  }
+}

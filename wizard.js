@@ -96,6 +96,7 @@ function wiz() {
   if (!W) W = JSON.parse(JSON.stringify(st || fresh()));
   if (!W.pf) W.pf = {};
   if (!W.sp) W.sp = {};
+  $('#app').dataset.view = 'wiz';
   $('#app').innerHTML = step == 0 ? wizYear() : step == 1 ? wizTable() : wizAbi();
   Motion.show('w:' + step);
 }
