@@ -539,3 +539,112 @@ dialog.ed[open] {
 .betabox {
   border-color: rgba(232, 176, 74, 0.45);
 }
+
+/* ---------- iPad und Mac ----------
+   Ab Tablet-Größe wird die Spalte breiter und die Kästen stehen nebeneinander. Die Mindesthöhe schließt Handys im
+   Querformat aus, dort bleibt alles wie im Hochformat. Auf dem Handy wirkt nichts aus diesem Block.
+   views.js und wizard.js setzen data-view an #app (ov, q, ab, un, kp, wiz). */
+@media (min-width: 720px) and (min-height: 600px) {
+  body {
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 980px;
+    padding: 16px 28px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    column-gap: 16px;
+    align-content: start;
+  }
+  main > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  main > .g {
+    margin: 8px 0;
+    padding: 18px;
+  }
+  main > .g.row {
+    padding: 14px 18px;
+  }
+  main > small.d {
+    margin-top: 8px;
+  }
+  main li {
+    text-wrap: pretty; /* keine einzelnen Wörter in der letzten Zeile */
+  }
+
+  /* Übersicht: Note mit großem Verlauf oben über die ganze Breite, darunter Zulassungs-Check und Schnitte nebeneinander */
+  main[data-view='ov'] > .ov-ck {
+    grid-column: 1 / 4;
+  }
+  main[data-view='ov'] > .ov-sn {
+    grid-column: 4 / -1;
+  }
+  /* Verlauf von Rand zu Rand des Kastens (breite Fassung aus chart.js), Beschriftung bleibt eingerückt */
+  main > .hero .trend {
+    margin: 18px -22px 14px;
+  }
+  main > .hero .trend__head,
+  main > .hero .trend__foot,
+  main > .hero .trend__hint {
+    padding: 0 22px;
+  }
+  main > .hero .trend svg {
+    display: none;
+  }
+  main > .hero .trend svg.trend__wide {
+    display: block;
+    margin: 10px 0 6px;
+  }
+  /* Angaben unter dem Verlauf: kleiner und zurückhaltender, Fortschritt schmal darunter */
+  main > .hero .trend ~ .d,
+  main > .hero .trend ~ small {
+    font-size: 12px;
+    line-height: 1.55;
+    color: rgba(155, 155, 163, 0.72);
+  }
+  main > .hero .prog {
+    max-width: 320px;
+    height: 4px;
+    margin: 10px auto 6px;
+  }
+  main > .hero {
+    padding: 26px 22px 22px;
+    text-wrap: pretty;
+  }
+  .hero .big {
+    font-size: 64px;
+  }
+
+  /* Halbjahre: Kurse als Kacheln, zwei nebeneinander (drei ab Laptop-Breite) */
+  main[data-view='q'] > .row {
+    grid-column: span 3;
+  }
+  /* Abitur: Prüfungsfächer zu zweit nebeneinander */
+  main[data-view='ab'] > .g {
+    grid-column: span 3;
+  }
+  /* Untis: Hausaufgaben als Kacheln zu zweit statt sehr langer Zeilen (Kopf, Fach-Chips und Knopf über die ganze Breite) */
+  main[data-view='un'] > .g:has(> .un-hw) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+    align-content: start;
+  }
+  main[data-view='un'] > .g:has(> .un-hw) > :not(.un-hw) {
+    grid-column: 1 / -1;
+  }
+  main[data-view='un'] > .g > .un-hw {
+    margin: 6px 0;
+  }
+  /* Einrichtung: Kurstabelle und Auswahl bleiben kompakt */
+  main[data-view='wiz'] {
+    max-width: 720px;
+  }
+}
+@media (min-width: 1000px) and (min-height: 600px) {
+  main[data-view='q'] > .row {
+    grid-column: span 2;
+  }
+}
