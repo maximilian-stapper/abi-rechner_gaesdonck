@@ -17,29 +17,37 @@ function trend() {
   if (h.length < 2) {
     return '<div class="trend flat"><p class="trend__hint">Hier erscheint dein Verlauf, sobald sich die Hochrechnung ändert.</p></div>';
   }
-  const W = 300,
-    H = 84,
-    PX = 10,
-    PY = 12,
-    n = h.length,
+  const n = h.length,
     v = h.map((p) => noteExact(p[1])),
     lo = Math.min(...v),
     hi = Math.max(...v),
     span = Math.max(hi - lo, 0.3),
     mid = (hi + lo) / 2,
-    x = (i) => PX + (i * (W - 2 * PX)) / (n - 1),
-    y = (val) => H / 2 + ((val - mid) / span) * (H - 2 * PY),
-    pts = v.map((val, i) => [x(i), y(val)]);
-  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-  for (let i = 1; i < n; i++) {
-    const [x0, y0] = pts[i - 1],
-      [x1, y1] = pts[i],
-      m = (x1 - x0) / 2;
-    d += ` C${(x0 + m).toFixed(1)} ${y0.toFixed(1)} ${(x1 - m).toFixed(1)} ${y1.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}`;
-  }
-  const last = pts[n - 1],
-    area = `${d} L${last[0].toFixed(1)} ${H} L${pts[0][0].toFixed(1)} ${H} Z`,
-    dG = h[n - 1][1] - h[0][1],
+    // Eine Grafik der Breite W × H; PL/PR Abstand links/rechts, PY oben/unten. edge: Fläche bis an beide Ränder ziehen.
+    plot = (W, H, PL, PR, PY, id, attr, edge) => {
+      const x = (i) => PL + (i * (W - PL - PR)) / (n - 1),
+        y = (val) => H / 2 + ((val - mid) / span) * (H - 2 * PY),
+        pts = v.map((val, i) => [x(i), y(val)]);
+      let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+      for (let i = 1; i < n; i++) {
+        const [x0, y0] = pts[i - 1],
+          [x1, y1] = pts[i],
+          m = (x1 - x0) / 2;
+        d += ` C${(x0 + m).toFixed(1)} ${y0.toFixed(1)} ${(x1 - m).toFixed(1)} ${y1.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+      }
+      const last = pts[n - 1],
+        area = edge
+          ? `M0 ${pts[0][1].toFixed(1)} ${d.replace(/^M/, 'L')} L${W} ${last[1].toFixed(1)} L${W} ${H} L0 ${H} Z`
+          : `${d} L${last[0].toFixed(1)} ${H} L${pts[0][0].toFixed(1)} ${H} Z`;
+      return `<svg${attr} viewBox="0 0 ${W} ${H}" role="img" aria-label="Verlauf der Hochrechnung: ${label}">
+      <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".28"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
+      <path class="trend__area" d="${area}" fill="url(#${id})"/>
+      <path class="trend__line" d="${d}" pathLength="1"/>
+      <circle class="trend__halo" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="7"/>
+      <circle class="trend__dot" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.5"/>
+    </svg>`;
+    };
+  const dG = h[n - 1][1] - h[0][1],
     cls = dG > 0 ? 'up' : dG < 0 ? 'down' : 'flat',
     dn = Math.round(Math.abs(v[n - 1] - v[0]) * 10) / 10,
     label =
@@ -55,13 +63,8 @@ function trend() {
     });
   return `<div class="trend ${cls}">
     <div class="trend__head"><span>Verlauf</span><b>${label}</b></div>
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Verlauf der Hochrechnung: ${label}">
-      <defs><linearGradient id="trendfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".28"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
-      <path class="trend__area" d="${area}" fill="url(#trendfill)"/>
-      <path class="trend__line" d="${d}" pathLength="1"/>
-      <circle class="trend__halo" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="7"/>
-      <circle class="trend__dot" cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.5"/>
-    </svg>
+    ${plot(300, 84, 10, 10, 12, 'trendfill', '', false)}
+    ${plot(900, 190, 2, 14, 16, 'trendfill2', ' class="trend__wide"', true)}
     <div class="trend__foot"><span>seit ${since}</span><span>jetzt</span></div>
   </div>`;
 }

@@ -29,6 +29,10 @@
   overflow: visible;
   margin: 4px 0 2px;
 }
+/* Breite Fassung für iPad und Mac (chart.js), auf dem Handy ausgeblendet; eingeblendet in style.css „iPad und Mac“ */
+.trend svg.trend__wide {
+  display: none;
+}
 .trend__line {
   fill: none;
   stroke: currentColor;

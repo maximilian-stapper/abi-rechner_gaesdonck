@@ -581,26 +581,33 @@ dialog.ed[open] {
   main[data-view='ov'] > .ov-sn {
     grid-column: 4 / -1;
   }
-  /* Verlauf groß (bis 720 px, rund 200 px hoch), Fortschritt gleich breit darunter */
-  main > .hero .trend,
-  main > .hero .prog {
-    max-width: 720px;
-    margin-left: auto;
-    margin-right: auto;
-  }
+  /* Verlauf von Rand zu Rand des Kastens (breite Fassung aus chart.js), Beschriftung bleibt eingerückt */
   main > .hero .trend {
-    margin-top: 16px;
-    margin-bottom: 10px;
+    margin: 18px -22px 14px;
   }
-  /* Die Grafik wächst mit der Breite (viewBox 300 breit): Linie und Punkt so fein wie auf dem Handy halten */
-  main > .hero .trend__line {
-    stroke-width: 1.2;
+  main > .hero .trend__head,
+  main > .hero .trend__foot,
+  main > .hero .trend__hint {
+    padding: 0 22px;
   }
-  main > .hero .trend__dot {
-    r: 1.7px;
+  main > .hero .trend svg {
+    display: none;
   }
-  main > .hero .trend__halo {
-    r: 3.4px;
+  main > .hero .trend svg.trend__wide {
+    display: block;
+    margin: 10px 0 6px;
+  }
+  /* Angaben unter dem Verlauf: kleiner und zurückhaltender, Fortschritt schmal darunter */
+  main > .hero .trend ~ .d,
+  main > .hero .trend ~ small {
+    font-size: 12px;
+    line-height: 1.55;
+    color: rgba(155, 155, 163, 0.72);
+  }
+  main > .hero .prog {
+    max-width: 320px;
+    height: 4px;
+    margin: 10px auto 6px;
   }
   main > .hero {
     padding: 26px 22px 22px;
@@ -617,6 +624,19 @@ dialog.ed[open] {
   /* Abitur: Prüfungsfächer zu zweit nebeneinander */
   main[data-view='ab'] > .g {
     grid-column: span 3;
+  }
+  /* Untis: Hausaufgaben als Kacheln zu zweit statt sehr langer Zeilen (Kopf, Fach-Chips und Knopf über die ganze Breite) */
+  main[data-view='un'] > .g:has(> .un-hw) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+    align-content: start;
+  }
+  main[data-view='un'] > .g:has(> .un-hw) > :not(.un-hw) {
+    grid-column: 1 / -1;
+  }
+  main[data-view='un'] > .g > .un-hw {
+    margin: 6px 0;
   }
   /* Einrichtung: Kurstabelle und Auswahl bleiben kompakt */
   main[data-view='wiz'] {
