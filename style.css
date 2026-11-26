@@ -574,23 +574,33 @@ dialog.ed[open] {
     text-wrap: pretty; /* keine einzelnen Wörter in der letzten Zeile */
   }
 
-  /* Übersicht: Note oben über die ganze Breite, darunter Zulassungs-Check und Schnitte nebeneinander
-     (ab Laptop-Breite steht die Note links über dem Zulassungs-Check, siehe unten) */
-  main[data-view='ov'] {
-    grid-auto-flow: row dense;
-  }
+  /* Übersicht: Note mit großem Verlauf oben über die ganze Breite, darunter Zulassungs-Check und Schnitte nebeneinander */
   main[data-view='ov'] > .ov-ck {
     grid-column: 1 / 4;
   }
   main[data-view='ov'] > .ov-sn {
     grid-column: 4 / -1;
   }
-  /* Verlauf und Fortschritt in der breiten Note nicht endlos strecken */
+  /* Verlauf groß (bis 720 px, rund 200 px hoch), Fortschritt gleich breit darunter */
   main > .hero .trend,
   main > .hero .prog {
-    max-width: 440px;
+    max-width: 720px;
     margin-left: auto;
     margin-right: auto;
+  }
+  main > .hero .trend {
+    margin-top: 16px;
+    margin-bottom: 10px;
+  }
+  /* Die Grafik wächst mit der Breite (viewBox 300 breit): Linie und Punkt so fein wie auf dem Handy halten */
+  main > .hero .trend__line {
+    stroke-width: 1.2;
+  }
+  main > .hero .trend__dot {
+    r: 1.7px;
+  }
+  main > .hero .trend__halo {
+    r: 3.4px;
   }
   main > .hero {
     padding: 26px 22px 22px;
@@ -616,16 +626,5 @@ dialog.ed[open] {
 @media (min-width: 1000px) and (min-height: 600px) {
   main[data-view='q'] > .row {
     grid-column: span 2;
-  }
-  /* Übersicht: Note (ggf. Beta-Hinweis) und Zulassungs-Check links, Schnitte rechts daneben */
-  main[data-view='ov'] > .hero,
-  main[data-view='ov'] > .betabox {
-    grid-column: 1 / 4;
-  }
-  main[data-view='ov'] > .ov-sn {
-    grid-row: span 2;
-  }
-  main[data-view='ov']:has(> .betabox) > .ov-sn {
-    grid-row: span 3;
   }
 }
