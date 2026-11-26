@@ -785,19 +785,6 @@ button.kp-kw:hover {
   hyphens: auto;
   overflow-wrap: anywhere;
 }
-.kp-nx {
-  flex-wrap: wrap;
-  margin: 4px 0 4px;
-}
-.kp-nx small {
-  flex-basis: 100%;
-  padding-left: 18px;
-  color: var(--d);
-}
-.kp-cnt {
-  display: block;
-  margin: 0 0 6px 2px;
-}
 .kp-past {
   display: block;
   margin: 4px 0 2px;

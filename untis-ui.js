@@ -488,10 +488,15 @@ const UntisUI = (() => {
       rows.push(`<div class="kp-wk${isCur ? ' cur' : ''}"><button type=button class="kp-kw${w.mon === wk ? ' on' : ''}" data-u=kpwk data-w=${w.mon} aria-label="KW ${kw(w.mon)} im Stundenplan zeigen"><b>${kw(w.mon)}</b></button>${cells}</div>`);
     }
 
-    const top = `<div class=un-hh><h2>Klausuren</h2>${toggle}</div><p class=d style="margin:6px 0 10px">${p.stufe === 'EF' ? 'Klausuren deiner Fächer aus dem Stundenplan' : `Nur deine schriftlichen Fächer in ${sem}`}, dazu Ferien und freie Tage. Stand ${esc(KP.stand.split(',')[0])}.</p>`,
+    // Wie im Untis-Tab: „Als Nächstes“ als eigener Block über der Karte, in der Karte direkt der Kalender, Hinweise darunter
+    const top = `<div class=un-hh><h2>Klausuren</h2>${toggle}</div>`,
       next = nx
-        ? `<button type=button class="un-nx kp-nx" data-u=kpx data-i=${kpList.indexOf(nx)} style="--h:${hue(kpKey(nx))}"><span class=dot></span><b>Nächste Klausur</b><span class=nm>${esc(US.name(kpKey(nx)))}</span><small>${fmt(nx.date)} · ${kpDur(nx)} · ${kpIn(nx.date, td)}</small></button><small class="d kp-cnt">${upcoming.length === 1 ? 'Das ist die letzte Klausur' : `Noch ${upcoming.length} Klausuren`} in diesem Halbjahr.</small>`
-        : `<p class=d style="margin:4px 0 10px">${noWritten ? `Im Abi-Rechner sind für ${sem} keine schriftlichen Fächer eingetragen. Trag deine Kurse dort ein (S oder LK), dann erscheinen hier deine Klausuren.` : kpList.length ? 'In diesem Halbjahr stehen keine Klausuren mehr an.' : 'Für deine Fächer stehen in diesem Plan keine Klausuren.'}</p>`,
+        ? `<button type=button class=un-nx data-u=kpx data-i=${kpList.indexOf(nx)} style="--h:${hue(kpKey(nx))}"><span class=dot></span><b>Als Nächstes</b><span class=nm>${esc(US.name(kpKey(nx)))}</span><small>${fmt(nx.date)} · ${kpIn(nx.date, td)}</small></button>`
+        : '',
+      info = `<small class="d kp-nt">${p.stufe === 'EF' ? 'Klausuren deiner Fächer aus dem Stundenplan' : `Nur deine schriftlichen Fächer in ${sem}`}, dazu Ferien und freie Tage. Stand ${esc(KP.stand.split(',')[0])}.</small>`,
+      count = nx
+        ? `<small class="d kp-nt">${upcoming.length === 1 ? 'Das ist die letzte Klausur' : `Noch ${upcoming.length} Klausuren`} in diesem Halbjahr.</small>`
+        : `<small class="d kp-nt">${noWritten ? `Im Abi-Rechner sind für ${sem} keine schriftlichen Fächer eingetragen. Trag deine Kurse dort ein (S oder LK), dann erscheinen hier deine Klausuren.` : kpList.length ? 'In diesem Halbjahr stehen keine Klausuren mehr an.' : 'Für deine Fächer stehen in diesem Plan keine Klausuren.'}</small>`,
       pastBtn = past.length ? `<button type=button class="lk kp-past" data-u=kppast aria-expanded="${kpPast}">${kpPast ? 'Vergangene Wochen ausblenden' : past.length + ' vergangene Woche' + (past.length === 1 ? '' : 'n') + ' zeigen'}</button>` : '',
       unsure = kpList.some((e) => e.unsure && e.date >= td)
         ? `<small class="d kp-nt">Mit <b>?</b>: LK-Klausur, falls dein Kurs (L1 oder L2) im angegebenen Band liegt. Nach dem Untis-Abgleich klärt sich das von selbst.</small>`
@@ -501,7 +506,7 @@ const UntisUI = (() => {
     const exp = upcoming.filter((e) => !e.unsure),
       skip = upcoming.length - exp.length,
       cal = `<div class=kp-cal><button type=button class="bt pr" data-u=kpics${exp.length ? '' : ' disabled'}>In meinen Kalender eintragen</button><small class=d>${exp.length ? `Lädt eine Kalenderdatei mit ${exp.length === 1 ? 'deiner nächsten Klausur' : `deinen ${exp.length} anstehenden Klausuren`}: ganztägige Termine mit Erinnerung am Vortag. Datei öffnen und alle hinzufügen, z. B. im Apple-Kalender.${skip ? ` ${skip} LK-Klausur${skip === 1 ? '' : 'en'} mit ? ${skip === 1 ? 'ist' : 'sind'} nicht dabei.` : ''}` : 'Keine anstehenden Klausuren zum Eintragen.'}</small></div>`;
-    return `<div class=g id=kp>${top}${next}${pastBtn}${grid}${unsure}<small class="d kp-nt">Tippe auf eine Klausur für Details und auf die KW, um die Woche im Untis-Stundenplan zu öffnen. Der Vertretungsplan in WebUntis hat Vorrang.</small>${cal}</div>`;
+    return `${next}<div class=g id=kp>${top}${pastBtn}${grid}${count}${info}${unsure}<small class="d kp-nt">Tippe auf eine Klausur für Details und auf die KW, um die Woche im Untis-Stundenplan zu öffnen. Der Vertretungsplan in WebUntis hat Vorrang.</small>${cal}</div>`;
   }
 
   function kpSheet(e) {
