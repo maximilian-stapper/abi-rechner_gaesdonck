@@ -197,6 +197,26 @@ const UntisUI = (() => {
     return `<div class="un-hw${h.done ? ' dn' : ''}" style="--h:${hue(k)}"><button type=button class=uchk data-u=chk data-id="${esc(h.id)}" aria-pressed="${!!h.done}" aria-label="${h.done ? 'Als offen markieren' : 'Als erledigt markieren'}"></button>${lnk ? `<button type=button class=un-hb data-u=sub data-k="${esc(k)}">${body}</button>` : `<div class=un-hb>${body}</div>`}${!lnk && h.src === 'manual' ? `<button type=button class=ux data-u=hwdel data-id="${esc(h.id)}" aria-label="Hausaufgabe löschen">✕</button>` : ''}</div>`;
   }
 
+  // Stunde, zu der eine Hausaufgabe fällig ist → { k, date, start } oder null.
+  // Mit Fälligkeit: die erste Stunde des Fachs an diesem Tag (eine ausfallende nur, wenn es an dem Tag keine andere gibt),
+  // sonst die nächste Stunde danach. Ohne Fälligkeit: die nächste Stunde ab jetzt.
+  function hwLesson(h) {
+    const k = key(h),
+      td = U.util.today(),
+      now = new Date(),
+      nowT = two(now.getHours()) + ':' + two(now.getMinutes()),
+      d0 = h.due && h.due > td ? h.due : td;
+    for (let i = 0; i <= 56; i++) {
+      const d = U.util.add(d0, i),
+        a = U.day(d).filter((x) => key(x) === k && (h.due || d > td || x.end > nowT)),
+        l = a.find((x) => x.status !== 'cancelled') || (i === 0 && h.due ? a[0] : null);
+      if (l) return { k, date: d, start: l.start };
+    }
+    return null;
+  }
+  // Liegt die fällige Stunde t im (evtl. zur Doppelstunde zusammengefassten) Block l?
+  const hwAt = (t, l) => !!t && t.k === key(l) && t.date === l.date && t.start >= l.start && t.start < l.end;
+
   // ---------- Stundenplan ----------
   // Überlappende Termine nebeneinander legen (Spuren)
   function lay(a) {
@@ -234,7 +254,8 @@ const UntisUI = (() => {
     return kpList.filter((e) => e.date === d.date);
   }
 
-  function grid(w, open) {
+  // due: Liste der fälligen Stunden offener Hausaufgaben (hwLesson); die Zahl steht nur an genau dieser Stunde
+  function grid(w, due) {
     const td = U.util.today(),
       H = Math.round((T - F) * PX),
       y = (m) => Math.round((m - F) * PX),
@@ -283,10 +304,10 @@ const UntisUI = (() => {
             .map(({ l, s, e, lane, n }) => {
               const k = key(l),
                 h = Math.max(Math.round((e - s) * PX) - 2, 14),
-                cnt = open.get(k) || 0,
+                cnt = due.filter((t) => hwAt(t, l)).length,
                 sx = STX[l.status] || '',
                 cls = (l.status === 'cancelled' ? ' x' : l.status === 'changed' ? ' c' : l.status === 'exam' ? ' e' : '') + (isLk(k) ? ' is-lk' : '');
-              return `<button type=button class="un-ls${cls}" data-u=ls data-k="${esc(k)}" data-d="${d.date}" data-id="${esc(l.id)}" data-s="${l.start}" style="--h:${PLAN_HUE};top:${y(s) + 1}px;height:${h}px;left:calc(${(lane / n) * 100}% + 1px);width:calc(${100 / n}% - 2px)" aria-label="${esc(label(l) + ', ' + l.start + ' bis ' + l.end + (sx ? ', ' + sx : '') + (cnt ? ', ' + cnt + ' offene Hausaufgaben' : ''))}"><b>${esc(short(l))}</b>${l.status === 'exam' && h >= 30 ? '<small>Klausur</small>' : ''}${h >= (l.status === 'exam' ? 44 : 30) && l.room && !(l.status === 'exam' && /klausur/i.test(l.room)) ? `<small>${esc(l.room)}</small>` : ''}${cnt ? `<span class=un-bg>${cnt}</span>` : ''}</button>`;
+              return `<button type=button class="un-ls${cls}" data-u=ls data-k="${esc(k)}" data-d="${d.date}" data-id="${esc(l.id)}" data-s="${l.start}" style="--h:${PLAN_HUE};top:${y(s) + 1}px;height:${h}px;left:calc(${(lane / n) * 100}% + 1px);width:calc(${100 / n}% - 2px)" aria-label="${esc(label(l) + ', ' + l.start + ' bis ' + l.end + (sx ? ', ' + sx : '') + (cnt ? ', ' + cnt + (cnt === 1 ? ' Hausaufgabe' : ' Hausaufgaben') + ' auf diese Stunde' : ''))}"><b>${esc(short(l))}</b>${l.status === 'exam' && h >= 30 ? '<small>Klausur</small>' : ''}${h >= (l.status === 'exam' ? 44 : 30) && l.room && !(l.status === 'exam' && /klausur/i.test(l.room)) ? `<small>${esc(l.room)}</small>` : ''}${cnt ? `<span class=un-bg>${cnt}</span>` : ''}</button>`;
             })
             .join('');
           const line = d.date === td && nowM >= F && nowM <= T ? `<i class=un-now style="top:${y(nowM)}px"></i>` : '';
@@ -330,7 +351,10 @@ const UntisUI = (() => {
     let g = '',
       note = '';
     if (has) {
-      const r = grid(w, open);
+      const r = grid(
+        w,
+        hw.filter((h) => !h.done).map(hwLesson).filter(Boolean),
+      );
       g = weekLessons ? `<div data-swap=un-week data-key=${w.from}>${r.html}</div>` : `<p data-swap=un-week data-key=${w.from} class=d style="padding:14px 4px">In dieser Woche sind keine Stunden gespeichert${s.range && s.range[0] ? ` (letzter Abgleich: ${fmt(s.range[0])} bis ${fmt(s.range[1])})` : ''}.</p>`;
       if (r.hidden) note += `<small class="d un-nt">${r.hidden} Termin${r.hidden == 1 ? '' : 'e'} außerhalb von ${FROM} bis ${TO} ${r.hidden == 1 ? 'wird' : 'werden'} nicht angezeigt.</small>`;
     }
@@ -545,9 +569,17 @@ const UntisUI = (() => {
       dn = all.filter((h) => h.done),
       l = ls ? findLesson(ls.date, ls.id, ls.start) : null,
       old = d.querySelector('.dbody'),
-      y = old ? old.scrollTop : 0;
+      y = old ? old.scrollTop : 0,
+      list = (a) => a.map((h) => hwItem(h, false)).join('');
+    // Aus einer Stunde geöffnet: zuerst, was genau auf diese Stunde fällig ist, darunter die übrigen offenen
+    let open_;
+    if (l) {
+      const mine = op.filter((h) => hwAt(hwLesson(h), l)),
+        rest = op.filter((h) => !mine.includes(h));
+      open_ = `<h4>Auf diese Stunde</h4>${mine.length ? list(mine) : '<p class=d>Keine Hausaufgaben auf diese Stunde.</p>'}${rest.length ? '<h4>Weitere offene</h4>' + list(rest) : ''}`;
+    } else open_ = `<h4>Hausaufgaben</h4>${op.length ? list(op) : '<p class=d>Keine offenen Hausaufgaben.</p>'}`;
     d.className = 'un';
-    d.innerHTML = `<h3 style="--h:${hue(k)}"><span class=dot></span>${esc(reg.get(k) || US.name(k))}</h3><div class=dbody>${l ? lessonInfo(l) : ''}<h4>Hausaufgaben</h4>${op.length ? op.map((h) => hwItem(h, false)).join('') : '<p class=d>Keine offenen Hausaufgaben.</p>'}${dn.length ? '<h4>Erledigt</h4>' + dn.map((h) => hwItem(h, false)).join('') : ''}</div><div class=bar><button type=button class=bt data-u=hwnew data-k="${esc(k)}">+ Hausaufgabe</button><button type=button class="bt pr" data-u=x>Schließen</button></div>`;
+    d.innerHTML = `<h3 style="--h:${hue(k)}"><span class=dot></span>${esc(reg.get(k) || US.name(k))}</h3><div class=dbody>${l ? lessonInfo(l) : ''}${open_}${dn.length ? '<h4>Erledigt</h4>' + dn.map((h) => hwItem(h, false)).join('') : ''}</div><div class=bar><button type=button class=bt data-u=hwnew data-k="${esc(k)}">+ Hausaufgabe</button><button type=button class="bt pr" data-u=x>Schließen</button></div>`;
     if (!d.open) d.showModal();
     const nb = d.querySelector('.dbody');
     if (nb) nb.scrollTop = y;
