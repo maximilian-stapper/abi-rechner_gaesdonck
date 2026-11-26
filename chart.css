@@ -3,6 +3,16 @@
   margin: 10px 0 6px;
   text-align: left;
 }
+/* Handy: Verlauf von Rand zu Rand des Kastens (wie auf iPad/Mac), Beschriftung bleibt eingerückt.
+   Hebt das Innenpolster von .hero (14px) auf; iPad/Mac überschreibt das in style.css. */
+.hero .trend {
+  margin: 12px -14px 6px;
+}
+.hero .trend__head,
+.hero .trend__foot,
+.hero .trend__hint {
+  padding: 0 16px;
+}
 .trend.up {
   color: var(--ok);
 }
