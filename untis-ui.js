@@ -19,6 +19,16 @@ const UntisUI = (() => {
   const FROM = '07:55',
     TO = '18:30',
     PX = 0.9; // Pixel pro Minute
+  // Stundenraster der Gaesdonck (fest): sechs Stunden mit Pausen, Mittagspause, dann Nachmittag bis 18:30.
+  // Daraus entstehen die feinen Hintergrundlinien im Wochenplan (grid).
+  const SLOTS = [
+    ['07:55', '08:40'], ['08:45', '09:30'],
+    ['09:50', '10:35'], ['10:40', '11:25'],
+    ['11:40', '12:25'], ['12:25', '13:10'],
+    ['13:50', '14:35'], ['14:35', '15:20'],
+    ['15:25', '16:10'], ['16:10', '16:55'],
+    ['17:00', '17:45'], ['17:45', '18:30'],
+  ];
 
   // Server (gaesdonck.webuntis.com), Schule und Worker stehen fest in untis.js (FIX) und müssen nie eingetragen werden.
 
@@ -232,8 +242,19 @@ const UntisUI = (() => {
     let hidden = 0;
     const hl = [];
     for (let h = Math.ceil(F / 60); h * 60 <= T; h++) hl.push(h);
+    // Linien zwischen den Stunden: kurze Pause (≤ 5 min) → eine Linie in der Mitte, längere Pause → Linie an Ende und Anfang
+    const sl = [];
+    for (let i = 1; i < SLOTS.length; i++) {
+      const a = mins(SLOTS[i - 1][1]),
+        b = mins(SLOTS[i][0]);
+      if (b - a <= 5) sl.push((a + b) / 2);
+      else sl.push(a, b);
+    }
     const axis = hl.map((h) => `<i style="top:${y(h * 60)}px">${h}:00</i>`).join(''),
-      lines = hl.map((h) => `<i class=hl style="top:${y(h * 60)}px"></i>`).join(''),
+      lines = sl
+        .filter((m) => m > F && m < T)
+        .map((m) => `<i class=hl style="top:${y(m)}px"></i>`)
+        .join(''),
       marks = new Map(w.days.map((d) => [d.date, kpDay(d)])),
       heads = w.days
         .map((d) => {
